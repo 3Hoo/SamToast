@@ -5,16 +5,6 @@ import { setImage, stopAnimation } from './image';
 
 const appWindow = getCurrentWindow();
 
-// Drag the frameless window by clicking anywhere on the toast.
-document.getElementById('toast')!.addEventListener('mousedown', (e) => {
-  if (e.button === 0) appWindow.startDragging();
-});
-
-// Click — focus the associated Claude Code session then close/hide.
-document.getElementById('toast')!.addEventListener('click', async () => {
-  await invoke('on_notification_click');
-});
-
 // ---------------------------------------------------------------------------
 // Backend event payloads
 // ---------------------------------------------------------------------------
@@ -35,30 +25,27 @@ interface NotificationShowPayload {
 }
 
 // ---------------------------------------------------------------------------
-// Event listeners
+// Helpers
+// ---------------------------------------------------------------------------
+
+function hexToRgba(hex: string, opacity: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+// ---------------------------------------------------------------------------
+// UI update
 // ---------------------------------------------------------------------------
 
 // Default config used until Phase 5 populates event_config from the backend.
 const DEFAULT_EVENT_CONFIG: EventConfig = {
   image_area: { width: 80, height: 80 },
-  image_bg_color: 'transparent',
-  image_bg_opacity: 1,
+  image_bg_color: '#000000',
+  image_bg_opacity: 0,
   frame_interval_ms: 100,
 };
-
-listen<NotificationShowPayload>('notification-show', (event) => {
-  const { event_name, cwd, event_config } = event.payload;
-  updateUI(event_name, cwd, event_config ?? DEFAULT_EVENT_CONFIG);
-});
-
-listen('notification-closing', () => {
-  stopAnimation();
-  invoke('on_notification_closing');
-});
-
-// ---------------------------------------------------------------------------
-// UI update
-// ---------------------------------------------------------------------------
 
 function updateUI(
   event_name: string,
@@ -71,8 +58,45 @@ function updateUI(
   const container = document.getElementById('image-container')!;
   container.style.width = cfg.image_area.width + 'px';
   container.style.height = cfg.image_area.height + 'px';
-  container.style.backgroundColor = cfg.image_bg_color;
-  container.style.opacity = String(cfg.image_bg_opacity);
+  container.style.backgroundColor = hexToRgba(cfg.image_bg_color, cfg.image_bg_opacity);
+  container.style.opacity = '';
 
   setImage(cfg.image_path, cfg.frame_interval_ms);
 }
+
+// ---------------------------------------------------------------------------
+// Drag + click — drag first to avoid false click fires after dragging
+// ---------------------------------------------------------------------------
+
+const toastEl = document.getElementById('toast')!;
+let dragging = false;
+
+toastEl.addEventListener('mousedown', (e) => {
+  if (e.button === 0) {
+    dragging = true;
+    appWindow.startDragging();
+  }
+});
+
+toastEl.addEventListener('click', async () => {
+  if (dragging) { dragging = false; return; }
+  await invoke('on_notification_click');
+});
+
+// ---------------------------------------------------------------------------
+// Event listeners (async IIFE for proper unlisten handle management)
+// ---------------------------------------------------------------------------
+
+(async () => {
+  const unlistenShow = await listen<NotificationShowPayload>('notification-show', (event) => {
+    const { event_name, cwd, event_config } = event.payload;
+    updateUI(event_name, cwd, event_config ?? DEFAULT_EVENT_CONFIG);
+  });
+
+  const unlistenClosing = await listen('notification-closing', async () => {
+    stopAnimation();
+    unlistenShow();
+    unlistenClosing();
+    await invoke('on_notification_closing');
+  });
+})();

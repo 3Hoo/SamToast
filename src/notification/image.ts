@@ -39,10 +39,11 @@ export async function setImage(
     img.src = frames[0];
 
     if (frames.length > 1) {
+      const interval = Math.max(frameIntervalMs, 16); // minimum ~60fps
       animationTimer = setInterval(() => {
         frameIdx = (frameIdx + 1) % frames.length;
         img.src = frames[frameIdx];
-      }, frameIntervalMs);
+      }, interval);
     }
   } catch {
     // readDir failed → treat as a plain file path.
