@@ -49,10 +49,13 @@ pub fn run() {
         sessions,
     };
 
+    let exe_dir_for_setup = exe_dir.clone();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
-        .setup(|app| {
+        .setup(move |app| {
+            let exe_dir = exe_dir_for_setup;
             let handle = app.handle().clone();
             let app_state = app.state::<AppState>();
             let config = app_state.config.clone();
@@ -80,6 +83,7 @@ pub fn run() {
                 let handle_clone = handle.clone();
                 let sessions_clone = sessions.clone();
                 let config_clone = config.clone();
+                let exe_dir_clone = exe_dir.clone();
                 tauri::async_runtime::spawn(async move {
                     while let Some(event) = rx.recv().await {
                         notification::handle_hook_event(
@@ -87,6 +91,7 @@ pub fn run() {
                             event,
                             sessions_clone.clone(),
                             config_clone.clone(),
+                            exe_dir_clone.clone(),
                         )
                         .await;
                     }

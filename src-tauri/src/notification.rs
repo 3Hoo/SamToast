@@ -72,6 +72,9 @@ pub async fn start_timeout(
         _ = tokio::time::sleep(Duration::from_secs(timeout_secs)) => {
             // Notify frontend to start closing animation / hide
             window.emit("notification-closing", ()).ok();
+            // Frontend animation grace period, then hide unconditionally as fallback
+            tokio::time::sleep(Duration::from_millis(600)).await;
+            window.hide().ok();
         }
         _ = cancel_token.cancelled() => {
             // A new hook event arrived; the caller will restart the timer
@@ -88,6 +91,7 @@ pub async fn handle_hook_event(
     event: HookEvent,
     sessions: SharedSessions,
     config: SharedConfig,
+    exe_dir: std::path::PathBuf,
 ) {
     let session_id = event.payload.session_id.clone();
     let event_name = event.payload.hook_event_name.clone();
@@ -145,8 +149,11 @@ pub async fn handle_hook_event(
                 )
                 .ok();
 
-            // Play sound
-            crate::sound::play_notification_sound(sound_path.as_deref());
+            // Play sound (Fix 3: use spawn_blocking to avoid blocking async executor)
+            let sound_path_owned = sound_path.clone();
+            tokio::task::spawn_blocking(move || {
+                crate::sound::play_notification_sound(sound_path_owned.as_deref());
+            });
 
             // Restart timeout
             let window_clone = window.clone();
@@ -158,14 +165,41 @@ pub async fn handle_hook_event(
         // ----------------------------------------------------------------
         // New session: create window  (Step 4-1)
         // ----------------------------------------------------------------
-        let label_len = 8.min(session_id.len());
-        let window_label = format!("notification-{}", &session_id[..label_len]);
+
+        // Fix 2: use full session_id with sanitization for Tauri window label
+        let safe_id = session_id
+            .chars()
+            .map(|c| {
+                if c.is_alphanumeric() || c == '-' || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect::<String>();
+        let window_label = format!("notification-{}", safe_id);
 
         // Look up saved position from config
         let saved_pos: Option<(i32, i32)> = config
             .read()
             .ok()
             .and_then(|c| c.sessions.get(&session_id).map(|p| (p.window_x, p.window_y)));
+
+        // Fix 1: Register session state BEFORE calling builder.build()
+        let cancel_token = CancellationToken::new();
+        {
+            if let Ok(mut reg) = sessions.lock() {
+                let mut state = SessionState::with_context(
+                    session_id.clone(),
+                    window_label.clone(),
+                    cwd.clone(),
+                    pid,
+                );
+                state.status = NotificationStatus::Active;
+                state.cancel_token = Some(cancel_token.clone());
+                reg.upsert(session_id.clone(), state);
+            }
+        }
 
         let builder = WebviewWindowBuilder::new(
             &app,
@@ -183,6 +217,10 @@ pub async fn handle_hook_event(
             Ok(w) => w,
             Err(e) => {
                 eprintln!("[notification] Failed to create window for {session_id}: {e}");
+                // Clean up session registration since window creation failed
+                if let Ok(mut reg) = sessions.lock() {
+                    reg.remove(&session_id);
+                }
                 return;
             }
         };
@@ -207,10 +245,12 @@ pub async fn handle_hook_event(
         }
 
         // Step 4-2: Listen for move events to persist position
+        // Fix 5: also save config to disk on move
         {
             let window_clone = window.clone();
             let config_clone = config.clone();
             let session_id_clone = session_id.clone();
+            let exe_dir_clone = exe_dir.clone();
 
             window.on_window_event(move |ev| {
                 if let WindowEvent::Moved(pos) = ev {
@@ -232,24 +272,12 @@ pub async fn handle_hook_event(
                             },
                         );
                     }
+                    // Persist updated position to disk
+                    if let Ok(cfg) = config_clone.read() {
+                        let _ = crate::config::save_config(&exe_dir_clone, &cfg);
+                    }
                 }
             });
-        }
-
-        // Register session
-        let cancel_token = CancellationToken::new();
-        {
-            if let Ok(mut reg) = sessions.lock() {
-                let mut state = SessionState::with_context(
-                    session_id.clone(),
-                    window_label.clone(),
-                    cwd.clone(),
-                    pid,
-                );
-                state.status = NotificationStatus::Active;
-                state.cancel_token = Some(cancel_token.clone());
-                reg.upsert(session_id.clone(), state);
-            }
         }
 
         window.show().ok();
@@ -266,8 +294,11 @@ pub async fn handle_hook_event(
             )
             .ok();
 
-        // Play sound
-        crate::sound::play_notification_sound(sound_path.as_deref());
+        // Play sound (Fix 3: use spawn_blocking to avoid blocking async executor)
+        let sound_path_owned = sound_path.clone();
+        tokio::task::spawn_blocking(move || {
+            crate::sound::play_notification_sound(sound_path_owned.as_deref());
+        });
 
         // Start timeout
         let window_clone = window.clone();
