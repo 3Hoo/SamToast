@@ -206,8 +206,6 @@ pub async fn handle_hook_event(
             window.set_position(pos).ok();
         }
 
-        window.show().ok();
-
         // Step 4-2: Listen for move events to persist position
         {
             let window_clone = window.clone();
@@ -253,6 +251,8 @@ pub async fn handle_hook_event(
                 reg.upsert(session_id.clone(), state);
             }
         }
+
+        window.show().ok();
 
         // Emit show event to frontend
         window
