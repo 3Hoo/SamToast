@@ -34,7 +34,7 @@ fn build_hooks_object(port: u16, enabled_events: &[String]) -> Value {
 ///
 /// On write failure returns `Err` containing the JSON string so the caller can
 /// put it on the clipboard.
-pub fn configure_hooks(port: u16, enabled_events: &[String]) -> Result<String, String> {
+pub fn configure_hooks(port: u16, enabled_events: &[String]) -> Result<(), String> {
     let claude_dir = get_claude_dir()?;
     let settings_path = claude_dir.join("settings.json");
 
@@ -94,7 +94,7 @@ pub fn configure_hooks(port: u16, enabled_events: &[String]) -> Result<String, S
 
     // Attempt to write; on failure return the JSON so the frontend can copy it.
     match std::fs::write(&settings_path, &json_str) {
-        Ok(_) => Ok("설정이 완료되었습니다".to_string()),
+        Ok(_) => Ok(()),
         Err(e) => {
             eprintln!("[hooks_config] Write failed: {e}");
             Err(format!(

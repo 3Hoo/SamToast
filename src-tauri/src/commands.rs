@@ -3,6 +3,12 @@
 use crate::{config, focus, hooks_config, AppState};
 use crate::config::AppConfig;
 
+#[cfg(target_os = "windows")]
+use windows::Win32::System::Registry::{
+    RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegSetValueExW,
+    HKEY_CURRENT_USER, KEY_SET_VALUE, REG_OPTION_NON_VOLATILE, REG_SZ,
+};
+
 // ---------------------------------------------------------------------------
 // get_config
 // ---------------------------------------------------------------------------
@@ -34,14 +40,15 @@ pub fn save_config(
 
 /// Enable or disable launching this app on Windows login via the registry.
 #[tauri::command]
-pub fn set_auto_start(enabled: bool, _app: tauri::AppHandle) -> Result<(), String> {
+pub fn set_auto_start(
+    state: tauri::State<AppState>,
+    enabled: bool,
+    _app: tauri::AppHandle,
+) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         use windows::core::PCWSTR;
-        use windows::Win32::System::Registry::{
-            RegCloseKey, RegDeleteValueW, RegOpenKeyExW, RegSetValueExW,
-            HKEY_CURRENT_USER, KEY_SET_VALUE, REG_SZ,
-        };
+        use windows::Win32::Foundation::ERROR_FILE_NOT_FOUND;
 
         // Get the current exe path for the registry value.
         let exe_path = std::env::current_exe()
@@ -56,15 +63,22 @@ pub fn set_auto_start(enabled: bool, _app: tauri::AppHandle) -> Result<(), Strin
         let value_name: Vec<u16> = "FunnyToastAlarm\0".encode_utf16().collect();
 
         unsafe {
-            let mut hkey = windows::Win32::System::Registry::HKEY::default();
-            let result = RegOpenKeyExW(
+            use windows::Win32::System::Registry::HKEY;
+            let mut hkey = HKEY::default();
+            // Use RegCreateKeyExW so the key is created if it doesn't exist yet.
+            RegCreateKeyExW(
                 HKEY_CURRENT_USER,
                 PCWSTR(reg_path.as_ptr()),
                 0,
+                None,
+                REG_OPTION_NON_VOLATILE,
                 KEY_SET_VALUE,
+                None,
                 &mut hkey,
-            );
-            result.ok().map_err(|e| format!("레지스트리 키 열기 실패: {e}"))?;
+                None,
+            )
+            .ok()
+            .map_err(|e| format!("레지스트리 키 열기/생성 실패: {e}"))?;
 
             if enabled {
                 // Encode exe path as UTF-16 (with null terminator) for REG_SZ.
@@ -86,19 +100,23 @@ pub fn set_auto_start(enabled: bool, _app: tauri::AppHandle) -> Result<(), Strin
             } else {
                 let result = RegDeleteValueW(hkey, PCWSTR(value_name.as_ptr()));
                 let _ = RegCloseKey(hkey);
-                // Ignore "value not found" errors (ERROR_FILE_NOT_FOUND = 2).
+                // Ignore "value not found" errors (ERROR_FILE_NOT_FOUND).
                 if let Err(e) = result.ok() {
-                    if e.code().0 as u32 != 2 {
+                    if e.code() != windows::core::Error::from(ERROR_FILE_NOT_FOUND).code() {
                         return Err(format!("레지스트리 값 삭제 실패: {e}"));
                     }
                 }
             }
         }
+
+        // Update in-memory config and persist to disk (Fix 6).
+        state.config.write().unwrap().auto_start = enabled;
+        let _ = config::save_config(&state.exe_dir, &state.config.read().unwrap());
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = (enabled, app);
+        let _ = (enabled, _app, &state);
     }
 
     Ok(())
@@ -113,7 +131,7 @@ pub fn set_auto_start(enabled: bool, _app: tauri::AppHandle) -> Result<(), Strin
 /// Reads the current config to determine which events are enabled and which
 /// port the HTTP server is listening on.
 #[tauri::command]
-pub fn configure_claude_hooks(state: tauri::State<AppState>) -> Result<String, String> {
+pub fn configure_claude_hooks(state: tauri::State<AppState>) -> Result<(), String> {
     let (port, enabled_events) = {
         let cfg = state.config.read().unwrap();
         let port = cfg.port;
@@ -151,11 +169,12 @@ pub async fn on_notification_click(
     };
 
     if focus_session {
-        // Window label format: "notification-<session_id>"
-        let session_id = window.label().trim_start_matches("notification-");
+        // Window label format: "notification-<safe_id>" (sanitized session_id).
+        let label = window.label();
+        let safe_id = label.strip_prefix("notification-").unwrap_or(label);
         let pid = {
             let sessions = state.sessions.lock().unwrap();
-            sessions.get(session_id).and_then(|s| s.pid)
+            sessions.get(safe_id).and_then(|s| s.pid)
         };
         if let Some(pid) = pid {
             focus::focus_session_window(pid);

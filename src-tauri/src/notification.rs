@@ -98,6 +98,20 @@ pub async fn handle_hook_event(
     let cwd = event.payload.cwd.clone();
     let pid = event.payload.pid;
 
+    // Sanitize session_id for use as Tauri window label suffix.
+    // Registry keys always use safe_id so on_notification_click can look up
+    // by stripping the "notification-" prefix from the window label.
+    let safe_id: String = session_id
+        .chars()
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+
     // Retrieve timeout setting before taking any locks
     let timeout_secs = config
         .read()
@@ -110,11 +124,11 @@ pub async fn handle_hook_event(
         .ok()
         .and_then(|c| c.events.get(&event_name).and_then(|e| e.sound_path.clone()));
 
-    // Check if the session already exists
+    // Check if the session already exists (keyed by safe_id).
     let existing_label: Option<String> = sessions
         .lock()
         .ok()
-        .and_then(|reg| reg.get(&session_id).map(|s| s.window_label.clone()));
+        .and_then(|reg| reg.get(&safe_id).map(|s| s.window_label.clone()));
 
     if let Some(window_label) = existing_label {
         // ----------------------------------------------------------------
@@ -126,7 +140,7 @@ pub async fn handle_hook_event(
             // Cancel any running timeout, then issue a fresh token
             let new_token = CancellationToken::new();
             if let Ok(mut reg) = sessions.lock() {
-                if let Some(state) = reg.get_mut(&session_id) {
+                if let Some(state) = reg.get_mut(&safe_id) {
                     // Explicitly cancel the old token so the running task wakes up
                     if let Some(old) = state.cancel_token.take() {
                         old.cancel();
@@ -166,17 +180,6 @@ pub async fn handle_hook_event(
         // New session: create window  (Step 4-1)
         // ----------------------------------------------------------------
 
-        // Fix 2: use full session_id with sanitization for Tauri window label
-        let safe_id = session_id
-            .chars()
-            .map(|c| {
-                if c.is_alphanumeric() || c == '-' || c == '_' {
-                    c
-                } else {
-                    '_'
-                }
-            })
-            .collect::<String>();
         let window_label = format!("notification-{}", safe_id);
 
         // Look up saved position from config
@@ -197,7 +200,8 @@ pub async fn handle_hook_event(
                 );
                 state.status = NotificationStatus::Active;
                 state.cancel_token = Some(cancel_token.clone());
-                reg.upsert(session_id.clone(), state);
+                // Key by safe_id so on_notification_click can look up by window label suffix.
+                reg.upsert(safe_id.clone(), state);
             }
         }
 
@@ -219,7 +223,7 @@ pub async fn handle_hook_event(
                 eprintln!("[notification] Failed to create window for {session_id}: {e}");
                 // Clean up session registration since window creation failed
                 if let Ok(mut reg) = sessions.lock() {
-                    reg.remove(&session_id);
+                    reg.remove(&safe_id);
                 }
                 return;
             }
