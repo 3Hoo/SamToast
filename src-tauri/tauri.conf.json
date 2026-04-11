@@ -17,7 +17,17 @@
         "width": 400,
         "height": 200,
         "visible": false,
-        "url": "src/notification/index.html"
+        "url": "notification/index.html"
+      },
+      {
+        "label": "settings",
+        "title": "FunnyToastAlarm Settings",
+        "url": "settings/index.html",
+        "width": 700,
+        "height": 500,
+        "visible": false,
+        "resizable": true,
+        "decorations": true
       }
     ],
     "trayIcon": {
