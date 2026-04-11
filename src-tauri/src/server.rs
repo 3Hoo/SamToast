@@ -62,8 +62,9 @@ async fn handle_hook(
         return StatusCode::OK;
     }
 
-    if let Err(e) = state.event_tx.send(HookEvent { payload }).await {
-        eprintln!("[server] Failed to send HookEvent to app: {e}");
+    if let Err(e) = state.event_tx.send(HookEvent { payload: payload.clone() }).await {
+        eprintln!("[server] Failed to deliver '{}' event (session: {}): {e}",
+                  payload.hook_event_name, payload.session_id);
     }
 
     StatusCode::OK

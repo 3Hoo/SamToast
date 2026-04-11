@@ -8,6 +8,8 @@ use server::HookEvent;
 use tauri::Manager;
 use tokio::sync::mpsc;
 
+const HOOK_CHANNEL_CAPACITY: usize = 32;
+
 /// App-wide state container (to be expanded in later phases)
 pub struct AppState {
     pub config: SharedConfig,
@@ -29,7 +31,7 @@ pub fn run() {
         .unwrap_or_else(|| std::path::PathBuf::from("."));
 
     let config = config::init_config(&exe_dir);
-    let (tx, rx) = mpsc::channel::<HookEvent>(32);
+    let (tx, rx) = mpsc::channel::<HookEvent>(HOOK_CHANNEL_CAPACITY);
 
     let state = AppState {
         config,
@@ -40,6 +42,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .setup(|app| {
+            let handle = app.handle().clone();  // Phase 6에서 emit 사용 예정
             let app_state = app.state::<AppState>();
             let config = app_state.config.clone();
             let port = {
@@ -51,7 +54,9 @@ pub fn run() {
 
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = server::start_server(port, config, tx).await {
-                    eprintln!("[server] Failed to start: {e}");
+                    eprintln!("[server] Failed to start on port {port}: {e}");
+                    // Phase 6에서: handle.emit("server-error", &e).ok();
+                    let _ = handle; // 지금은 미사용이지만 Phase 6에서 활용
                 }
             });
 
