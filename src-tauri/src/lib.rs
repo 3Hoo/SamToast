@@ -14,19 +14,20 @@ pub struct AppState {
 pub fn run() {
     // Resolve the directory next to the executable for portable config storage
     let exe_dir = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_else(|_| {
+            eprintln!("[config] Warning: could not resolve exe path, using cwd");
+            std::path::PathBuf::from(".")
+        })
+        .parent()
+        .map(|p| p.to_path_buf())
         .unwrap_or_else(|| std::path::PathBuf::from("."));
 
-    let shared_config = config::init_config(&exe_dir);
-
-    let _state = AppState {
-        config: shared_config,
-    };
+    let config = config::init_config(&exe_dir);
+    let state = AppState { config };
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        // Phase 6: .manage(_state) and commands will be wired here
+        .manage(state)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

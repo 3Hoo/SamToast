@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 
 // 이미지 표시 영역
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct ImageArea {
     pub width: u32,  // 논리 픽셀
     pub height: u32,
@@ -21,6 +22,7 @@ impl Default for ImageArea {
 
 // 이벤트별 설정
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct EventConfig {
     pub enabled: bool,
     pub sound_path: Option<String>,
@@ -62,6 +64,7 @@ pub enum OnClickClose {
 
 // 알림 동작 설정
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct NotificationConfig {
     pub timeout_secs: u64,            // 0 = timeout 없음
     pub on_click_focus_session: bool,
@@ -82,6 +85,7 @@ impl Default for NotificationConfig {
 
 // 세션별 창 위치
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct SessionPos {
     pub window_x: i32,
     pub window_y: i32,
@@ -89,6 +93,7 @@ pub struct SessionPos {
 
 // 최상위 앱 설정
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub struct AppConfig {
     pub port: u16,
     pub auto_start: bool,
