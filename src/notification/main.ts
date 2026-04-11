@@ -38,9 +38,17 @@ interface NotificationShowPayload {
 // Event listeners
 // ---------------------------------------------------------------------------
 
+// Default config used until Phase 5 populates event_config from the backend.
+const DEFAULT_EVENT_CONFIG: EventConfig = {
+  image_area: { width: 80, height: 80 },
+  image_bg_color: 'transparent',
+  image_bg_opacity: 1,
+  frame_interval_ms: 100,
+};
+
 listen<NotificationShowPayload>('notification-show', (event) => {
   const { event_name, cwd, event_config } = event.payload;
-  updateUI(event_name, cwd, event_config);
+  updateUI(event_name, cwd, event_config ?? DEFAULT_EVENT_CONFIG);
 });
 
 listen('notification-closing', () => {
