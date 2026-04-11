@@ -119,13 +119,16 @@ pub async fn handle_hook_event(
         if let Some(window) = app.get_webview_window(&window_label) {
             window.show().ok();
 
-            // Cancel any running timeout by storing a fresh token in session
+            // Cancel any running timeout, then issue a fresh token
             let new_token = CancellationToken::new();
             if let Ok(mut reg) = sessions.lock() {
                 if let Some(state) = reg.get_mut(&session_id) {
+                    // Explicitly cancel the old token so the running task wakes up
+                    if let Some(old) = state.cancel_token.take() {
+                        old.cancel();
+                    }
                     state.status = NotificationStatus::Active;
                     state.cwd = cwd.clone();
-                    // Replace cancel token (old one will be dropped → cancelled)
                     state.cancel_token = Some(new_token.clone());
                 }
             }
