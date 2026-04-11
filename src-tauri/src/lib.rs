@@ -1,5 +1,6 @@
 // FunnyToastAlarm - Tauri application entry point
 
+pub mod commands;
 pub mod config;
 pub mod focus;
 pub mod notification;
@@ -53,6 +54,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(state)
         .setup(move |app| {
             let exe_dir = exe_dir_for_setup;
@@ -103,6 +105,10 @@ pub fn run() {
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![
+            commands::on_notification_click,
+            commands::on_notification_closing,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

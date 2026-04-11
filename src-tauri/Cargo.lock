@@ -901,6 +901,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
+ "tauri-plugin-fs",
  "tokio",
  "tokio-util",
  "windows 0.58.0",

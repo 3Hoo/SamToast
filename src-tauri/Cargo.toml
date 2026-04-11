@@ -15,6 +15,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-ico", "image-png"] }
 tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 axum = "0.7"
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["rt"] }

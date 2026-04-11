@@ -1,12 +1,21 @@
 <!DOCTYPE html>
-<html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FunnyToastAlarm - Notification</title>
-  </head>
-  <body>
-    <!-- Placeholder: notification window UI will be implemented in a later phase -->
-    <div id="app"></div>
-  </body>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>FunnyToastAlarm</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="toast" class="toast">
+    <div id="image-container" class="image-container">
+      <img id="toast-image" src="" alt="" />
+    </div>
+    <div class="toast-info">
+      <div class="app-name">Claude Code</div>
+      <div id="session-cwd" class="session-cwd"></div>
+      <div id="event-badge" class="event-badge"></div>
+    </div>
+  </div>
+  <script type="module" src="./main.ts"></script>
+</body>
 </html>
