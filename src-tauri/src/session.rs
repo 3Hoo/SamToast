@@ -3,6 +3,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use tokio_util::sync::CancellationToken;
+
 pub type SharedSessions = Arc<Mutex<SessionRegistry>>;
 
 /// Notification visibility status
@@ -29,6 +31,8 @@ pub struct SessionState {
     pub pid: Option<u32>,
     /// Current notification visibility status
     pub status: NotificationStatus,
+    /// Cancellation token for the active timeout task
+    pub cancel_token: Option<CancellationToken>,
 }
 
 impl SessionState {
@@ -40,6 +44,7 @@ impl SessionState {
             cwd: None,
             pid: None,
             status: NotificationStatus::Idle,
+            cancel_token: None,
         }
     }
 
@@ -56,6 +61,7 @@ impl SessionState {
             cwd,
             pid,
             status: NotificationStatus::Idle,
+            cancel_token: None,
         }
     }
 }

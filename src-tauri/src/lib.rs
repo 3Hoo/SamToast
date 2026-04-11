@@ -1,8 +1,11 @@
 // FunnyToastAlarm - Tauri application entry point
 
 pub mod config;
+pub mod focus;
+pub mod notification;
 pub mod server;
 pub mod session;
+pub mod sound;
 
 use config::SharedConfig;
 use server::HookEvent;
@@ -50,9 +53,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(state)
         .setup(|app| {
-            let handle = app.handle().clone();  // Phase 6에서 emit 사용 예정
+            let handle = app.handle().clone();
             let app_state = app.state::<AppState>();
             let config = app_state.config.clone();
+            let sessions = app_state.sessions.clone();
             let port = {
                 config
                     .read()
@@ -60,13 +64,37 @@ pub fn run() {
                     .unwrap_or(12759)
             };
 
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = server::start_server(port, config, tx).await {
-                    eprintln!("[server] Failed to start on port {port}: {e}");
-                    // Phase 6에서: handle.emit("server-error", &e).ok();
-                    let _ = handle; // 지금은 미사용이지만 Phase 6에서 활용
-                }
-            });
+            // Spawn HTTP server
+            {
+                let config_clone = config.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = server::start_server(port, config_clone, tx).await {
+                        eprintln!("[server] Failed to start on port {port}: {e}");
+                    }
+                });
+            }
+
+            // Consume hook events and dispatch to notification handler (Step lib.rs)
+            let rx = app_state.event_rx.lock().unwrap().take();
+            if let Some(mut rx) = rx {
+                let handle_clone = handle.clone();
+                let sessions_clone = sessions.clone();
+                let config_clone = config.clone();
+                tauri::async_runtime::spawn(async move {
+                    while let Some(event) = rx.recv().await {
+                        notification::handle_hook_event(
+                            handle_clone.clone(),
+                            event,
+                            sessions_clone.clone(),
+                            config_clone.clone(),
+                        )
+                        .await;
+                    }
+                    eprintln!("[notification] Event channel closed");
+                });
+            }
+
+            let _ = handle; // retained for Phase 6
 
             Ok(())
         })
