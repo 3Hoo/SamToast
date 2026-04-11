@@ -1,2 +1,12 @@
 .superpowers/
 .worktrees/
+
+# Node / frontend
+node_modules/
+dist/
+
+# Rust / Tauri
+src-tauri/target/
+
+# Temp files
+app-icon.png
