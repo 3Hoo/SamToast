@@ -3,6 +3,7 @@
 pub mod commands;
 pub mod config;
 pub mod focus;
+pub mod hooks_config;
 pub mod notification;
 pub mod server;
 pub mod session;
@@ -16,9 +17,11 @@ use tokio::sync::mpsc;
 
 const HOOK_CHANNEL_CAPACITY: usize = 32;
 
-/// App-wide state container (to be expanded in later phases)
+/// App-wide state container
 pub struct AppState {
     pub config: SharedConfig,
+    /// Directory next to the executable — used for portable config storage.
+    pub exe_dir: std::path::PathBuf,
     /// Receiver for hook events; consumed by Phase 3/4 notification logic.
     /// Wrapped in a Mutex so it can be moved out of shared state when needed.
     pub event_rx: std::sync::Mutex<Option<mpsc::Receiver<HookEvent>>>,
@@ -28,7 +31,7 @@ pub struct AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Resolve the directory next to the executable for portable config storage
+    // Resolve the directory next to the executable for portable config storage.
     let exe_dir = std::env::current_exe()
         .unwrap_or_else(|_| {
             eprintln!("[config] Warning: could not resolve exe path, using cwd");
@@ -46,6 +49,7 @@ pub fn run() {
 
     let state = AppState {
         config,
+        exe_dir: exe_dir.clone(),
         event_rx: std::sync::Mutex::new(Some(rx)),
         sessions,
     };
@@ -79,7 +83,7 @@ pub fn run() {
                 });
             }
 
-            // Consume hook events and dispatch to notification handler (Step lib.rs)
+            // Consume hook events and dispatch to notification handler
             let rx = app_state.event_rx.lock().unwrap().take();
             if let Some(mut rx) = rx {
                 let handle_clone = handle.clone();
@@ -106,6 +110,10 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::get_config,
+            commands::save_config,
+            commands::set_auto_start,
+            commands::configure_claude_hooks,
             commands::on_notification_click,
             commands::on_notification_closing,
         ])
