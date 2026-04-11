@@ -2,9 +2,11 @@
 
 pub mod config;
 pub mod server;
+pub mod session;
 
 use config::SharedConfig;
 use server::HookEvent;
+use session::SharedSessions;
 use tauri::Manager;
 use tokio::sync::mpsc;
 
@@ -16,6 +18,8 @@ pub struct AppState {
     /// Receiver for hook events; consumed by Phase 3/4 notification logic.
     /// Wrapped in a Mutex so it can be moved out of shared state when needed.
     pub event_rx: std::sync::Mutex<Option<mpsc::Receiver<HookEvent>>>,
+    /// Registry for tracking Claude Code sessions and their notification states
+    pub sessions: SharedSessions,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,10 +36,14 @@ pub fn run() {
 
     let config = config::init_config(&exe_dir);
     let (tx, rx) = mpsc::channel::<HookEvent>(HOOK_CHANNEL_CAPACITY);
+    let sessions = session::SharedSessions::new(std::sync::Mutex::new(
+        session::SessionRegistry::new(),
+    ));
 
     let state = AppState {
         config,
         event_rx: std::sync::Mutex::new(Some(rx)),
+        sessions,
     };
 
     tauri::Builder::default()
