@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: transparent;
+    overflow: hidden;
+  }
+  
+  .radar {
+    width: 85%;
+    height: 85%;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 255, 128, 0.4);
+    position: relative;
+    box-shadow: 0 0 15px rgba(0, 255, 128, 0.2), inset 0 0 15px rgba(0, 255, 128, 0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  /* The scanning radar beam line */
+  .radar::before {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 50%;
+    background: linear-gradient(to top, transparent, rgba(0, 255, 128, 1));
+    top: 0;
+    transform-origin: bottom center;
+    animation: scan 2.5s linear infinite;
+    z-index: 2;
+  }
+  
+  /* The scanning radar gradient trail */
+  .radar-sweep {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, rgba(0, 255, 128, 0.6) 0deg, transparent 60deg);
+    animation: scan 2.5s linear infinite;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    background: #00ff80;
+    border-radius: 50%;
+    position: absolute;
+    top: 25%;
+    left: 65%;
+    box-shadow: 0 0 10px #00ff80;
+    animation: blink 2.5s infinite;
+    z-index: 3;
+  }
+  
+  .dot2 {
+    width: 4px;
+    height: 4px;
+    background: #ff3366;
+    border-radius: 50%;
+    position: absolute;
+    top: 70%;
+    left: 30%;
+    box-shadow: 0 0 10px #ff3366;
+    animation: blink2 4s infinite;
+    z-index: 3;
+  }
+
+  .center {
+    width: 8px;
+    height: 8px;
+    background: #00ff80;
+    border-radius: 50%;
+    box-shadow: 0 0 12px #00ff80;
+    z-index: 3;
+  }
+
+  @keyframes scan {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes blink {
+    0%, 20% { opacity: 0; transform: scale(0.5); }
+    25% { opacity: 1; transform: scale(1.5); }
+    100% { opacity: 0; transform: scale(1); }
+  }
+  
+  @keyframes blink2 {
+    0%, 40% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(0.8); }
+  }
+</style>
+</head>
+<body>
+  <div class="radar">
+    <div class="radar-sweep"></div>
+    <div class="center"></div>
+    <div class="dot"></div>
+    <div class="dot2"></div>
+  </div>
+</body>
+</html>
