@@ -98,7 +98,7 @@ export function renderNotification(config: AppConfig): void {
 
   const closeImageLabel = document.createElement('label');
   closeImageLabel.className = 'form-label';
-  closeImageLabel.textContent = 'Close Animation Image Path';
+  closeImageLabel.textContent = 'Close Animation Asset Path';
   closeImageGroup.appendChild(closeImageLabel);
 
   const closeImageRow = document.createElement('div');
@@ -107,7 +107,7 @@ export function renderNotification(config: AppConfig): void {
   const closeImageInput = document.createElement('input');
   closeImageInput.type = 'text';
   closeImageInput.className = 'form-input';
-  closeImageInput.placeholder = 'Path to image or animation folder';
+  closeImageInput.placeholder = 'Path to image, HTML, or animation folder';
   closeImageInput.value = working.close_image_path ?? '';
   closeImageInput.addEventListener('input', () => {
     working.close_image_path = closeImageInput.value.trim() || null;
@@ -120,7 +120,7 @@ export function renderNotification(config: AppConfig): void {
     const result = await open({
       directory: false,
       multiple: false,
-      filters: [{ name: 'Image', extensions: ['png', 'jpg', 'gif', 'webp'] }],
+      filters: [{ name: 'Asset', extensions: ['png', 'jpg', 'gif', 'webp', 'html', 'htm'] }],
     });
     const path = typeof result === 'string' ? result : Array.isArray(result) ? result[0] ?? null : null;
     if (path) {
@@ -145,7 +145,7 @@ export function renderNotification(config: AppConfig): void {
   closeImageRow.appendChild(browseFileBtn);
   closeImageRow.appendChild(browseDirBtn);
   closeImageGroup.appendChild(closeImageRow);
-  closeImageGroup.appendChild(buildHint('Folder with 0.png, 1.png… plays as animation before closing.'));
+  closeImageGroup.appendChild(buildHint('Image, HTML file, or folder with 0.png, 1.png… that plays before closing.'));
   container.appendChild(closeImageGroup);
 
   // ---- Save ----

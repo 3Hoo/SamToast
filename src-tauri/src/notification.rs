@@ -3,7 +3,7 @@
 use std::time::Duration;
 
 use tauri::{
-    Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
+    Emitter, Listener, Manager, WebviewUrl, WebviewWindowBuilder,
     WindowEvent,
 };
 use tokio_util::sync::CancellationToken;
@@ -16,8 +16,8 @@ use crate::session::{NotificationStatus, SessionState, SharedSessions};
 // Constants
 // ---------------------------------------------------------------------------
 
-const NOTIF_WIDTH: f64 = 280.0;
-const NOTIF_HEIGHT: f64 = 90.0;
+const NOTIF_WIDTH: f64 = 360.0;
+const NOTIF_HEIGHT: f64 = 130.0;
 const NOTIF_MARGIN: f64 = 20.0;
 
 // ---------------------------------------------------------------------------
@@ -218,6 +218,7 @@ pub async fn handle_hook_event(
         .decorations(false)
         .always_on_top(true)
         .transparent(true)
+        .shadow(false)
         .skip_taskbar(true)
         .visible(false)
         .inner_size(NOTIF_WIDTH, NOTIF_HEIGHT);
@@ -291,18 +292,18 @@ pub async fn handle_hook_event(
 
         window.show().ok();
 
-        // Emit show event to frontend
-        window
-            .emit(
-                "notification-show",
-                NotificationShowPayload {
-                    session_id: session_id.clone(),
-                    event_name,
-                    cwd,
-                    event_config: event_cfg,
-                },
-            )
-            .ok();
+        // Listen for frontend to be ready before emitting the initial payload
+        let payload = NotificationShowPayload {
+            session_id: session_id.clone(),
+            event_name,
+            cwd,
+            event_config: event_cfg,
+        };
+        
+        let window_clone_emit = window.clone();
+        window.once("notification-ready", move |_| {
+            window_clone_emit.emit("notification-show", payload).ok();
+        });
 
         // Play sound (Fix 3: use spawn_blocking to avoid blocking async executor)
         let sound_path_owned = sound_path.clone();

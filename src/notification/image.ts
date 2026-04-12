@@ -5,7 +5,7 @@
 // - null/undefined             → shows the bundled default Claude icon
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { readDir } from '@tauri-apps/plugin-fs';
+import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
 
 let animationTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -15,11 +15,31 @@ export async function setImage(
 ): Promise<void> {
   stopAnimation();
   const img = document.getElementById('toast-image') as HTMLImageElement;
+  const iframe = document.getElementById('toast-iframe') as HTMLIFrameElement;
 
   if (!imagePath) {
+    iframe.style.display = 'none';
+    img.style.display = 'block';
     img.src = '/assets/default-icon.png';
     return;
   }
+
+  // Display HTML
+  if (imagePath.toLowerCase().endsWith('.html') || imagePath.toLowerCase().endsWith('.htm')) {
+    img.style.display = 'none';
+    iframe.style.display = 'block';
+    try {
+      const htmlText = await readTextFile(imagePath);
+      iframe.srcdoc = htmlText;
+    } catch {
+      iframe.src = '';
+    }
+    return;
+  }
+
+  // Handle images or an animation sequence
+  iframe.style.display = 'none';
+  img.style.display = 'block';
 
   // Try reading as a directory first; fall back to treating it as a file.
   try {

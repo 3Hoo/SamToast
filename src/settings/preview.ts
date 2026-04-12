@@ -3,7 +3,7 @@
 // (targets #preview-image-<eventKey> instead of #toast-image).
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { readDir } from '@tauri-apps/plugin-fs';
+import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
 
 const timers: Map<string, ReturnType<typeof setInterval>> = new Map();
 
@@ -16,17 +16,38 @@ export function stopPreview(id: string): void {
 }
 
 export async function setPreviewImage(
-  imgEl: HTMLImageElement,
   id: string,
   imagePath: string | null | undefined,
   frameIntervalMs: number,
 ): Promise<void> {
   stopPreview(id);
 
+  const imgEl = document.getElementById(`preview-image-${id}`) as HTMLImageElement;
+  const iframeEl = document.getElementById(`preview-iframe-${id}`) as HTMLIFrameElement;
+  
+  if (!imgEl || !iframeEl) return;
+
   if (!imagePath) {
+    iframeEl.style.display = 'none';
+    imgEl.style.display = 'block';
     imgEl.src = '/assets/default-icon.png';
     return;
   }
+
+  if (imagePath.toLowerCase().endsWith('.html') || imagePath.toLowerCase().endsWith('.htm')) {
+    imgEl.style.display = 'none';
+    iframeEl.style.display = 'block';
+    try {
+      const htmlText = await readTextFile(imagePath);
+      iframeEl.srcdoc = htmlText;
+    } catch {
+      iframeEl.src = '';
+    }
+    return;
+  }
+
+  iframeEl.style.display = 'none';
+  imgEl.style.display = 'block';
 
   try {
     const entries = await readDir(imagePath);

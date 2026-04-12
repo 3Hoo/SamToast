@@ -41,7 +41,7 @@ function hexToRgba(hex: string, opacity: number): string {
 
 // Default config used until Phase 5 populates event_config from the backend.
 const DEFAULT_EVENT_CONFIG: EventConfig = {
-  image_area: { width: 80, height: 80 },
+  image_area: { width: 64, height: 64 },
   image_bg_color: '#000000',
   image_bg_opacity: 0,
   frame_interval_ms: 100,
@@ -115,4 +115,7 @@ toastEl.addEventListener('click', async () => {
     unlistenClosing();
     await invoke('on_notification_closing');
   });
+
+  // Signal backend that we are ready to receive the payload
+  await appWindow.emit('notification-ready');
 })();

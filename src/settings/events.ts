@@ -37,17 +37,25 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
   img.src = '/assets/default-icon.png';
   img.alt = 'preview';
 
+  const iframe = document.createElement('iframe');
+  iframe.id = `preview-iframe-${key}`;
+  iframe.style.display = 'none';
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = 'none';
+
   container.appendChild(img);
+  container.appendChild(iframe);
   panel.appendChild(container);
   return panel;
 }
 
 async function refreshPreview(key: EventKey): Promise<void> {
-  const img = document.getElementById(`preview-image-${key}`) as HTMLImageElement | null;
-  if (!img) return;
+  const container = document.getElementById(`preview-container-${key}`);
+  if (!container) return;
   const cfg = workingEvents[key];
   if (!cfg) return;
-  await setPreviewImage(img, key, cfg.image_path, cfg.frame_interval_ms);
+  await setPreviewImage(key, cfg.image_path, cfg.frame_interval_ms);
 }
 
 function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
@@ -105,7 +113,7 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
 
   const imageLabel = document.createElement('label');
   imageLabel.className = 'form-label';
-  imageLabel.textContent = 'Image Path (file or folder)';
+  imageLabel.textContent = 'Asset Path (Image/Folder/HTML)';
   imageGroup.appendChild(imageLabel);
 
   const imageRow = document.createElement('div');
@@ -128,7 +136,7 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
     const result = await open({
       directory: false,
       multiple: false,
-      filters: [{ name: 'Image', extensions: ['png', 'jpg', 'gif', 'webp'] }],
+      filters: [{ name: 'Asset', extensions: ['png', 'jpg', 'gif', 'webp', 'html', 'htm'] }],
     });
     const path = typeof result === 'string' ? result : Array.isArray(result) ? result[0] ?? null : null;
     if (path) {
@@ -155,7 +163,7 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   imageRow.appendChild(imageBrowseFile);
   imageRow.appendChild(imageBrowseDir);
   imageGroup.appendChild(imageRow);
-  imageGroup.appendChild(buildHint('If a folder is selected with numbered images (0.png, 1.png…) they play as animation.'));
+  imageGroup.appendChild(buildHint('Select an image, an HTML file, or a folder with numbered images (0.png, 1.png…) for animation.'));
   inner.appendChild(imageGroup);
 
   // --- Frame interval ---
