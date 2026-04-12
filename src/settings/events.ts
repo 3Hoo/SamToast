@@ -271,15 +271,17 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
     el: HTMLElement,
     offsetXField: keyof EventConfig,
     offsetYField: keyof EventConfig,
-    scaleField?: keyof EventConfig
+    scaleField?: keyof EventConfig,
+    dragHandle?: HTMLElement   // if set, only start drag when clicking this element
   ) => {
-    el.style.cursor = 'move';
+    const trigger = dragHandle || el;
+    trigger.style.cursor = 'move';
     el.style.transformOrigin = 'left center';
     el.style.display = window.getComputedStyle(el).display === 'none' ? 'none' : 'inline-block';
-    
-    el.addEventListener('mousedown', (e) => {
-      // Allow bubbling if we clicked the scale handle (so we don't drag the text/container instead)
-      if ((e.target as HTMLElement).className.includes('handle')) return;
+
+    trigger.addEventListener('mousedown', (e) => {
+      // If no dedicated dragHandle, avoid starting drag if we click a scale/move handle
+      if (!dragHandle && (e.target as HTMLElement).className.includes('handle')) return;
       
       if (e.button !== 0) return;
       e.preventDefault();
@@ -352,7 +354,10 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
   let currentWindowW = initCardW, currentWindowH = initCardH;
 
   // ---- Mousedown handlers ----
-  img.addEventListener('mousedown', (e) => {
+  imgContainer.addEventListener('mousedown', (e) => {
+    // If clicking on scaleHandle or areaHandle, don't drag the content
+    if ((e.target as HTMLElement).className.includes('handle')) return;
+    
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
