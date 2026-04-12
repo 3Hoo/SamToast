@@ -13,7 +13,7 @@ use config::SharedConfig;
 use server::HookEvent;
 use session::SharedSessions;
 use tauri::menu::{Menu, MenuItem};
-use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
 use tokio::sync::mpsc;
 
@@ -102,8 +102,11 @@ pub fn run() {
                     }
                 })
                 .on_tray_icon_event(|tray, event| {
+                    // Filter to Release only — Click fires on both Press and Release,
+                    // so without this filter the window toggles twice per click.
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
                         ..
                     } = event
                     {

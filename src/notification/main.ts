@@ -65,21 +65,37 @@ function updateUI(
 }
 
 // ---------------------------------------------------------------------------
-// Drag + click — drag first to avoid false click fires after dragging
+// Drag + click
+//
+// startDragging() is called only after the pointer has moved DRAG_THRESHOLD px
+// from the mousedown position. This ensures a plain click doesn't get absorbed
+// by the drag guard and still invokes on_notification_click.
 // ---------------------------------------------------------------------------
 
 const toastEl = document.getElementById('toast')!;
-let dragging = false;
+const DRAG_THRESHOLD = 4; // pixels before we consider it a drag
+let mouseDownPos = { x: 0, y: 0 };
+let isDragging = false;
 
 toastEl.addEventListener('mousedown', (e) => {
   if (e.button === 0) {
-    dragging = true;
-    appWindow.startDragging();
+    mouseDownPos = { x: e.clientX, y: e.clientY };
+    isDragging = false;
+  }
+});
+
+toastEl.addEventListener('mousemove', (e) => {
+  if (e.buttons !== 1 || isDragging) return;
+  const dx = e.clientX - mouseDownPos.x;
+  const dy = e.clientY - mouseDownPos.y;
+  if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
+    isDragging = true;
+    void appWindow.startDragging();
   }
 });
 
 toastEl.addEventListener('click', async () => {
-  if (dragging) { dragging = false; return; }
+  if (isDragging) { isDragging = false; return; }
   await invoke('on_notification_click');
 });
 
