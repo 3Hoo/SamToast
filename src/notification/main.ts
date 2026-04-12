@@ -190,17 +190,30 @@ toastEl.addEventListener('click', async () => {
 // ---------------------------------------------------------------------------
 
 (async () => {
-  const unlistenShow = await listen<NotificationShowPayload>('notification-show', (event) => {
-    const { event_name, cwd, event_config } = event.payload;
-    updateUI(event_name, cwd, event_config ?? DEFAULT_EVENT_CONFIG);
-  });
+  // target: appWindow.label ensures this window only receives events
+  // addressed to itself — prevents cross-session state contamination
+  // when multiple notification windows are open simultaneously.
+  const myLabel = appWindow.label;
 
-  const unlistenClosing = await listen('notification-closing', async () => {
-    stopAnimation();
-    unlistenShow();
-    unlistenClosing();
-    await invoke('on_notification_closing');
-  });
+  const unlistenShow = await listen<NotificationShowPayload>(
+    'notification-show',
+    (event) => {
+      const { event_name, cwd, event_config } = event.payload;
+      updateUI(event_name, cwd, event_config ?? DEFAULT_EVENT_CONFIG);
+    },
+    { target: myLabel },
+  );
+
+  const unlistenClosing = await listen(
+    'notification-closing',
+    async () => {
+      stopAnimation();
+      unlistenShow();
+      unlistenClosing();
+      await invoke('on_notification_closing');
+    },
+    { target: myLabel },
+  );
 
   await appWindow.emit('notification-ready');
 })();

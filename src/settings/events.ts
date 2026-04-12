@@ -271,15 +271,19 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
     el: HTMLElement,
     offsetXField: keyof EventConfig,
     offsetYField: keyof EventConfig,
-    scaleField?: keyof EventConfig
+    scaleField?: keyof EventConfig,
+    dragHandle?: HTMLElement   // if set, only start drag when clicking this element
   ) => {
-    el.style.cursor = 'move';
+    el.style.cursor = dragHandle ? 'default' : 'move';
     el.style.transformOrigin = 'left center';
     el.style.display = window.getComputedStyle(el).display === 'none' ? 'none' : 'inline-block';
-    
+    if (dragHandle) dragHandle.style.cursor = 'move';
+
     el.addEventListener('mousedown', (e) => {
       // Allow bubbling if we clicked the scale handle (so we don't drag the text/container instead)
       if ((e.target as HTMLElement).className.includes('handle')) return;
+      // If a dedicated dragHandle is set, only drag when clicking it
+      if (dragHandle && !dragHandle.contains(e.target as Node)) return;
       
       if (e.button !== 0) return;
       e.preventDefault();
