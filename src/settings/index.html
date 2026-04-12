@@ -4,9 +4,52 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FunnyToastAlarm - Settings</title>
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <!-- Placeholder: settings window UI will be implemented in a later phase -->
-    <div id="app"></div>
+    <div id="app">
+      <!-- Sidebar navigation -->
+      <nav id="sidebar">
+        <div class="sidebar-header">
+          <span class="app-logo">FunnyToastAlarm</span>
+        </div>
+        <ul class="nav-list">
+          <li class="nav-item active" data-section="events">Hook Events</li>
+          <li class="nav-item" data-section="notification">Notification</li>
+          <li class="nav-item" data-section="general">General</li>
+        </ul>
+      </nav>
+
+      <!-- Main content area -->
+      <main id="content">
+        <!-- Hook Events Section -->
+        <section id="section-events" class="section active">
+          <h2 class="section-title">Hook Events</h2>
+          <p class="section-desc">Enable events and configure per-event sound and image.</p>
+          <div id="events-list" class="events-list">
+            <!-- Rendered by events.ts -->
+          </div>
+        </section>
+
+        <!-- Notification Section -->
+        <section id="section-notification" class="section">
+          <h2 class="section-title">Notification</h2>
+          <p class="section-desc">Configure how notifications behave when shown or clicked.</p>
+          <div id="notification-form">
+            <!-- Rendered by notification.ts -->
+          </div>
+        </section>
+
+        <!-- General Section -->
+        <section id="section-general" class="section">
+          <h2 class="section-title">General</h2>
+          <p class="section-desc">Application-level settings.</p>
+          <div id="general-form">
+            <!-- Rendered by general.ts -->
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./main.ts"></script>
   </body>
 </html>
