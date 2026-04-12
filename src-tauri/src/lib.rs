@@ -84,8 +84,15 @@ pub fn run() {
             let quit_item = MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&quit_item])?;
 
+            // TrayIconBuilder::build() registers the icon in the app's resource table.
+            // The returned TrayIcon handle can be dropped safely; the icon persists
+            // and is retrievable anytime via app.tray_by_id("main").
             TrayIconBuilder::with_id("main")
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(
+                    app.default_window_icon()
+                        .ok_or("No default window icon configured")?
+                        .clone(),
+                )
                 .tooltip("FunnyToastAlarm")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
@@ -165,23 +172,31 @@ pub fn run() {
         .expect("error building tauri application")
         // --- Step 6-3: Exit cleanup ---
         .run(move |app, event| {
-            if let tauri::RunEvent::Exit = event {
-                // Close all active notification windows
-                let session_ids: Vec<String> = sessions_for_exit
-                    .lock()
-                    .unwrap()
-                    .session_ids();
-                for id in session_ids {
-                    let label = format!("notification-{id}");
-                    if let Some(win) = app.get_webview_window(&label) {
-                        let _ = win.close();
+            match event {
+                tauri::RunEvent::ExitRequested { .. } => {
+                    // Close all notification windows before they are destroyed.
+                    // ExitRequested fires while windows still exist; Exit fires after
+                    // they are already gone, so win.close() would be a no-op there.
+                    let session_ids: Vec<String> = sessions_for_exit
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .session_ids();
+                    for id in session_ids {
+                        let label = format!("notification-{id}");
+                        if let Some(win) = app.get_webview_window(&label) {
+                            let _ = win.close();
+                        }
                     }
                 }
-                // Final config save (positions are persisted on window move;
-                // this ensures nothing is lost if the process exits abruptly)
-                if let Ok(cfg) = config_for_exit.read() {
-                    let _ = config::save_config(&exe_dir_for_exit, &cfg);
+                tauri::RunEvent::Exit => {
+                    // Final config save (positions are persisted on window move;
+                    // this ensures nothing is lost if the process exits abruptly).
+                    // File I/O is safe here even though windows are already gone.
+                    if let Ok(cfg) = config_for_exit.read() {
+                        let _ = config::save_config(&exe_dir_for_exit, &cfg);
+                    }
                 }
+                _ => {}
             }
         });
 }
