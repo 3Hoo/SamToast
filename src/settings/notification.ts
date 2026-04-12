@@ -13,6 +13,51 @@ export function renderNotification(config: AppConfig): void {
   const container = document.getElementById('notification-form')!;
   container.innerHTML = '';
 
+  // ---- Window size ----
+  const winsizeGroup = document.createElement('div');
+  winsizeGroup.className = 'form-group';
+
+  const winsizeLabel = document.createElement('label');
+  winsizeLabel.className = 'form-label';
+  winsizeLabel.textContent = 'Notification Window Size (px)';
+  winsizeGroup.appendChild(winsizeLabel);
+
+  const winsizeRow = document.createElement('div');
+  winsizeRow.className = 'path-row';
+  winsizeRow.style.gap = '8px';
+  winsizeRow.style.alignItems = 'center';
+
+  const makeWinDimInput = (label: string, value: number, min: number, onChange: (v: number) => void) => {
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.gap = '6px';
+    const lbl = document.createElement('span');
+    lbl.className = 'form-hint';
+    lbl.textContent = label;
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.className = 'form-input';
+    inp.style.width = '80px';
+    inp.min = String(min);
+    inp.max = '1200';
+    inp.value = String(value);
+    inp.addEventListener('change', () => {
+      const v = Math.max(min, Math.min(1200, parseInt(inp.value, 10) || value));
+      inp.value = String(v);
+      onChange(v);
+    });
+    wrap.appendChild(lbl);
+    wrap.appendChild(inp);
+    return wrap;
+  };
+
+  winsizeRow.appendChild(makeWinDimInput('W', working.window_width ?? 360, 100, (v) => { working.window_width = v; }));
+  winsizeRow.appendChild(makeWinDimInput('H', working.window_height ?? 130, 40, (v) => { working.window_height = v; }));
+  winsizeGroup.appendChild(winsizeRow);
+  winsizeGroup.appendChild(buildHint('Notification window dimensions. Can also be adjusted by dragging the preview card in each event\'s settings.'));
+  container.appendChild(winsizeGroup);
+
   // ---- Timeout ----
   const timeoutGroup = document.createElement('div');
   timeoutGroup.className = 'form-group';

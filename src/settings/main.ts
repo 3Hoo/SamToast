@@ -22,6 +22,28 @@ export interface EventConfig {
   image_bg_color: string;
   image_bg_opacity: number;
   frame_interval_ms: number;
+  image_offset_x: number;
+  image_offset_y: number;
+  image_scale: number;
+  container_offset_x: number;
+  container_offset_y: number;
+  bg_visible: boolean;
+  
+  label_app_name: string | null;
+  app_name_offset_x: number;
+  app_name_offset_y: number;
+  app_name_scale: number;
+
+  label_show_cwd: boolean;
+  cwd_offset_x: number;
+  cwd_offset_y: number;
+  cwd_scale: number;
+
+  label_show_event_badge: boolean;
+  label_event_name: string | null;
+  badge_offset_x: number;
+  badge_offset_y: number;
+  badge_scale: number;
 }
 
 export type OnClickClose = 'instant' | 'animate';
@@ -31,6 +53,8 @@ export interface NotificationConfig {
   on_click_focus_session: boolean;
   on_click_close: OnClickClose;
   close_image_path: string | null;
+  window_width: number;
+  window_height: number;
 }
 
 export interface SessionPos {
