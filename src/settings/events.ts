@@ -260,6 +260,33 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
   cardWrapper.appendChild(card);
   cardWrapper.appendChild(cardHandle);
   stage.appendChild(cardWrapper);
+  
+  // ---- Debug Toggle ----
+  const debugToggle = document.createElement('label');
+  debugToggle.className = 'preview-debug-toggle';
+  debugToggle.innerHTML = `<input type="checkbox"> 🐛 Show Hitboxes (Debug)`;
+  debugToggle.style.position = 'absolute';
+  debugToggle.style.top = '12px';
+  debugToggle.style.right = '12px';
+  debugToggle.style.color = '#9aa8b8';
+  debugToggle.style.fontSize = '12px';
+  debugToggle.style.cursor = 'pointer';
+  debugToggle.style.display = 'flex';
+  debugToggle.style.alignItems = 'center';
+  debugToggle.style.gap = '6px';
+  debugToggle.style.zIndex = '50';
+  
+  const debugInput = debugToggle.querySelector('input')!;
+  debugInput.addEventListener('change', (e) => {
+    if ((e.target as HTMLInputElement).checked) {
+      stage.classList.add('debug-mode');
+    } else {
+      stage.classList.remove('debug-mode');
+    }
+  });
+  stage.style.position = 'relative';
+  stage.appendChild(debugToggle);
+
   panel.appendChild(stage);
   panel.appendChild(buildHint(
     'Drag image → position offset  ·  Drag ⊙ (bottom-right inside image) → scale  ·  ' +
