@@ -12,6 +12,8 @@ pub mod sound;
 use config::SharedConfig;
 use server::HookEvent;
 use session::SharedSessions;
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
 use tokio::sync::mpsc;
 
@@ -56,6 +58,11 @@ pub fn run() {
 
     let exe_dir_for_setup = exe_dir.clone();
 
+    // Clone for exit handler — must happen before move into Builder
+    let exe_dir_for_exit = exe_dir.clone();
+    let config_for_exit = state.config.clone();
+    let sessions_for_exit = state.sessions.clone();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -73,15 +80,54 @@ pub fn run() {
                     .unwrap_or(12759)
             };
 
-            // Spawn HTTP server
-            {
-                let config_clone = config.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = server::start_server(port, config_clone, tx).await {
-                        eprintln!("[server] Failed to start on port {port}: {e}");
+            // --- Step 6-1: Build tray icon with menu ---
+            let quit_item = MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&quit_item])?;
+
+            TrayIconBuilder::with_id("main")
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("FunnyToastAlarm")
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| {
+                    if event.id == "quit" {
+                        app.exit(0);
                     }
-                });
-            }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(win) = app.get_webview_window("settings") {
+                            if win.is_visible().unwrap_or(false) {
+                                let _ = win.hide();
+                            } else {
+                                let _ = win.show();
+                                let _ = win.set_focus();
+                            }
+                        }
+                    }
+                })
+                .build(app)?;
+
+            // --- Step 6-2: Spawn HTTP server ---
+            // Clone handle to propagate port-conflict warning to tray tooltip.
+            let handle_for_server = handle.clone();
+            let config_clone = config.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = server::start_server(port, config_clone, tx).await {
+                    eprintln!("[server] Failed to start on port {port}: {e}");
+                    // Show warning via tray tooltip — no new icon file required.
+                    if let Some(tray) = handle_for_server.tray_by_id("main") {
+                        let _ = tray.set_tooltip(Some(
+                            "FunnyToastAlarm — 포트 충돌! 설정에서 포트를 변경하세요.",
+                        ));
+                    }
+                }
+            });
 
             // Consume hook events and dispatch to notification handler
             let rx = app_state.event_rx.lock().unwrap().take();
@@ -105,8 +151,6 @@ pub fn run() {
                 });
             }
 
-            let _ = handle; // retained for Phase 6
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -117,6 +161,27 @@ pub fn run() {
             commands::on_notification_click,
             commands::on_notification_closing,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error building tauri application")
+        // --- Step 6-3: Exit cleanup ---
+        .run(move |app, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Close all active notification windows
+                let session_ids: Vec<String> = sessions_for_exit
+                    .lock()
+                    .unwrap()
+                    .session_ids();
+                for id in session_ids {
+                    let label = format!("notification-{id}");
+                    if let Some(win) = app.get_webview_window(&label) {
+                        let _ = win.close();
+                    }
+                }
+                // Final config save (positions are persisted on window move;
+                // this ensures nothing is lost if the process exits abruptly)
+                if let Ok(cfg) = config_for_exit.read() {
+                    let _ = config::save_config(&exe_dir_for_exit, &cfg);
+                }
+            }
+        });
 }
