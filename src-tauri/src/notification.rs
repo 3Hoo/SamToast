@@ -69,8 +69,8 @@ pub async fn start_timeout(
 
     tokio::select! {
         _ = tokio::time::sleep(Duration::from_secs(timeout_secs)) => {
-            // Notify frontend to start closing animation / hide
-            window.emit("notification-closing", ()).ok();
+            // Notify frontend to start closing animation / hide (emit_to = this window only)
+            window.emit_to(window.label(), "notification-closing", ()).ok();
             // Frontend animation grace period, then hide unconditionally as fallback
             tokio::time::sleep(Duration::from_millis(600)).await;
             window.hide().ok();
@@ -163,9 +163,10 @@ pub async fn handle_hook_event(
                 }
             }
 
-            // Emit show event to frontend
+            // Emit show event to this window only (not broadcast)
             window
-                .emit(
+                .emit_to(
+                    window.label(),
                     "notification-show",
                     NotificationShowPayload {
                         session_id: session_id.clone(),
@@ -310,7 +311,8 @@ pub async fn handle_hook_event(
         
         let window_clone_emit = window.clone();
         window.once("notification-ready", move |_| {
-            window_clone_emit.emit("notification-show", payload).ok();
+            // emit_to: send only to this specific window, not all windows
+            window_clone_emit.emit_to(window_clone_emit.label(), "notification-show", payload).ok();
         });
 
         // Play sound (Fix 3: use spawn_blocking to avoid blocking async executor)
