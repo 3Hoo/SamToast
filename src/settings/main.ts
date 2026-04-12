@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { renderEvents } from './events';
 import { renderNotification } from './notification';
 import { renderGeneral } from './general';
+import { initStore } from './store';
 
 // ---- TypeScript interfaces (mirror Rust AppConfig) ----
 
@@ -47,7 +48,7 @@ export interface AppConfig {
 
 // ---- Navigation ----
 
-function initNav(config: AppConfig): void {
+function initNav(): void {
   const items = document.querySelectorAll<HTMLElement>('.nav-item');
   const sections = document.querySelectorAll<HTMLElement>('.section');
 
@@ -61,9 +62,6 @@ function initNav(config: AppConfig): void {
       if (sec) sec.classList.add('active');
     });
   });
-
-  // Sections are already rendered — just activate first
-  void config;
 }
 
 // ---- Boot ----
@@ -71,12 +69,15 @@ function initNav(config: AppConfig): void {
 async function main(): Promise<void> {
   const config = await invoke<AppConfig>('get_config');
 
+  // Initialise shared store before rendering any section
+  initStore(config);
+
   // Render each section
   renderEvents(config);
   renderNotification(config);
   renderGeneral(config);
 
-  initNav(config);
+  initNav();
 }
 
 main().catch((err: unknown) => {

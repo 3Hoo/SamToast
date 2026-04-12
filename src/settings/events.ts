@@ -1,9 +1,10 @@
 // Hook Events section — renders event cards with toggle + detail panel.
 
-import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { AppConfig, EventConfig } from './main';
 import { setPreviewImage, stopPreview } from './preview';
+import { buildToggle, buildHint, showFeedback } from './ui';
+import { getConfig, saveConfig } from './store';
 
 const EVENT_KEYS = [
   'Stop',
@@ -17,7 +18,6 @@ type EventKey = (typeof EVENT_KEYS)[number];
 
 // Keep a working copy of each event's config so we can save later.
 let workingEvents: Record<string, EventConfig> = {};
-let globalConfig: AppConfig;
 
 function buildPreviewPanel(key: EventKey): HTMLElement {
   const panel = document.createElement('div');
@@ -87,9 +87,10 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
       multiple: false,
       filters: [{ name: 'Audio', extensions: ['wav', 'mp3', 'ogg', 'flac'] }],
     });
-    if (result) {
-      soundInput.value = result as string;
-      workingEvents[key]!.sound_path = result as string;
+    const path = typeof result === 'string' ? result : Array.isArray(result) ? result[0] ?? null : null;
+    if (path) {
+      soundInput.value = path;
+      workingEvents[key]!.sound_path = path;
     }
   });
 
@@ -129,9 +130,10 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
       multiple: false,
       filters: [{ name: 'Image', extensions: ['png', 'jpg', 'gif', 'webp'] }],
     });
-    if (result) {
-      imageInput.value = result as string;
-      workingEvents[key]!.image_path = result as string;
+    const path = typeof result === 'string' ? result : Array.isArray(result) ? result[0] ?? null : null;
+    if (path) {
+      imageInput.value = path;
+      workingEvents[key]!.image_path = path;
       void refreshPreview(key);
     }
   });
@@ -141,9 +143,10 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   imageBrowseDir.textContent = 'Folder';
   imageBrowseDir.addEventListener('click', async () => {
     const result = await open({ directory: true, multiple: false });
-    if (result) {
-      imageInput.value = result as string;
-      workingEvents[key]!.image_path = result as string;
+    const path = typeof result === 'string' ? result : Array.isArray(result) ? result[0] ?? null : null;
+    if (path) {
+      imageInput.value = path;
+      workingEvents[key]!.image_path = path;
       void refreshPreview(key);
     }
   });
@@ -196,12 +199,7 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
 
   saveBtn.addEventListener('click', async () => {
     try {
-      const newConfig: AppConfig = {
-        ...globalConfig,
-        events: { ...workingEvents },
-      };
-      await invoke('save_config', { config: newConfig });
-      globalConfig = newConfig;
+      await saveConfig({ events: { ...getConfig().events, ...workingEvents } });
       showFeedback(feedback, 'Saved!', 'success');
     } catch (e) {
       showFeedback(feedback, String(e), 'error');
@@ -214,19 +212,6 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
 
   detail.appendChild(inner);
   return detail;
-}
-
-function buildHint(text: string): HTMLElement {
-  const hint = document.createElement('div');
-  hint.className = 'form-hint';
-  hint.textContent = text;
-  return hint;
-}
-
-function showFeedback(el: HTMLElement, msg: string, type: 'success' | 'error'): void {
-  el.textContent = msg;
-  el.className = `feedback ${type}`;
-  setTimeout(() => { el.textContent = ''; el.className = ''; }, 3000);
 }
 
 function buildEventCard(key: EventKey, cfg: EventConfig): HTMLElement {
@@ -271,25 +256,7 @@ function buildEventCard(key: EventKey, cfg: EventConfig): HTMLElement {
   return card;
 }
 
-function buildToggle(checked: boolean, onChange: (v: boolean) => void): HTMLElement {
-  const label = document.createElement('label');
-  label.className = 'toggle';
-
-  const input = document.createElement('input');
-  input.type = 'checkbox';
-  input.checked = checked;
-  input.addEventListener('change', () => onChange(input.checked));
-
-  const slider = document.createElement('span');
-  slider.className = 'toggle-slider';
-
-  label.appendChild(input);
-  label.appendChild(slider);
-  return label;
-}
-
 export function renderEvents(config: AppConfig): void {
-  globalConfig = config;
   // Deep-copy events so we have a mutable working copy
   workingEvents = JSON.parse(JSON.stringify(config.events)) as Record<string, EventConfig>;
 

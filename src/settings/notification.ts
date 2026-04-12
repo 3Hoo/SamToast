@@ -1,20 +1,13 @@
 // Notification section — timeout, click behaviour, close behaviour.
 
-import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { AppConfig, NotificationConfig, OnClickClose } from './main';
+import { buildToggle, buildHint, showFeedback } from './ui';
+import { saveConfig } from './store';
 
-let globalConfig: AppConfig;
 let working: NotificationConfig;
 
-function showFeedback(el: HTMLElement, msg: string, type: 'success' | 'error'): void {
-  el.textContent = msg;
-  el.className = `feedback ${type}`;
-  setTimeout(() => { el.textContent = ''; el.className = ''; }, 3000);
-}
-
 export function renderNotification(config: AppConfig): void {
-  globalConfig = config;
   working = JSON.parse(JSON.stringify(config.notification)) as NotificationConfig;
 
   const container = document.getElementById('notification-form')!;
@@ -129,9 +122,10 @@ export function renderNotification(config: AppConfig): void {
       multiple: false,
       filters: [{ name: 'Image', extensions: ['png', 'jpg', 'gif', 'webp'] }],
     });
-    if (result) {
-      closeImageInput.value = result as string;
-      working.close_image_path = result as string;
+    const path = typeof result === 'string' ? result : Array.isArray(result) ? result[0] ?? null : null;
+    if (path) {
+      closeImageInput.value = path;
+      working.close_image_path = path;
     }
   });
 
@@ -140,9 +134,10 @@ export function renderNotification(config: AppConfig): void {
   browseDirBtn.textContent = 'Folder';
   browseDirBtn.addEventListener('click', async () => {
     const result = await open({ directory: true, multiple: false });
-    if (result) {
-      closeImageInput.value = result as string;
-      working.close_image_path = result as string;
+    const path = typeof result === 'string' ? result : Array.isArray(result) ? result[0] ?? null : null;
+    if (path) {
+      closeImageInput.value = path;
+      working.close_image_path = path;
     }
   });
 
@@ -165,12 +160,7 @@ export function renderNotification(config: AppConfig): void {
 
   saveBtn.addEventListener('click', async () => {
     try {
-      const newConfig: AppConfig = {
-        ...globalConfig,
-        notification: { ...working },
-      };
-      await invoke('save_config', { config: newConfig });
-      globalConfig = newConfig;
+      await saveConfig({ notification: { ...working } });
       showFeedback(feedback, 'Saved!', 'success');
     } catch (e) {
       showFeedback(feedback, String(e), 'error');
@@ -180,28 +170,4 @@ export function renderNotification(config: AppConfig): void {
   saveBar.appendChild(saveBtn);
   saveBar.appendChild(feedback);
   container.appendChild(saveBar);
-}
-
-function buildToggle(checked: boolean, onChange: (v: boolean) => void): HTMLElement {
-  const label = document.createElement('label');
-  label.className = 'toggle';
-
-  const input = document.createElement('input');
-  input.type = 'checkbox';
-  input.checked = checked;
-  input.addEventListener('change', () => onChange(input.checked));
-
-  const slider = document.createElement('span');
-  slider.className = 'toggle-slider';
-
-  label.appendChild(input);
-  label.appendChild(slider);
-  return label;
-}
-
-function buildHint(text: string): HTMLElement {
-  const hint = document.createElement('div');
-  hint.className = 'form-hint';
-  hint.textContent = text;
-  return hint;
 }

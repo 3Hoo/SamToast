@@ -9,5 +9,8 @@ dist/
 src-tauri/target/
 src-tauri/gen/
 
+# Compiled JS from TypeScript source
+src/**/*.js
+
 # Temp files
 app-icon.png

@@ -2,19 +2,13 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type { AppConfig } from './main';
+import { buildToggle, buildHint, showFeedback } from './ui';
+import { saveConfig } from './store';
 
-let globalConfig: AppConfig;
 let workingPort: number;
 let workingAutoStart: boolean;
 
-function showFeedback(el: HTMLElement, msg: string, type: 'success' | 'error'): void {
-  el.textContent = msg;
-  el.className = `feedback ${type}`;
-  setTimeout(() => { el.textContent = ''; el.className = ''; }, 3500);
-}
-
 export function renderGeneral(config: AppConfig): void {
-  globalConfig = config;
   workingPort = config.port;
   workingAutoStart = config.auto_start;
 
@@ -86,14 +80,8 @@ export function renderGeneral(config: AppConfig): void {
       // Persist auto-start via dedicated command (writes registry)
       await invoke('set_auto_start', { enabled: workingAutoStart });
 
-      // Persist port + auto_start flag in config file
-      const newConfig: AppConfig = {
-        ...globalConfig,
-        port: workingPort,
-        auto_start: workingAutoStart,
-      };
-      await invoke('save_config', { config: newConfig });
-      globalConfig = newConfig;
+      // Persist port + auto_start flag in config file via shared store
+      await saveConfig({ port: workingPort, auto_start: workingAutoStart });
       showFeedback(saveFeedback, 'Saved!', 'success');
     } catch (e) {
       showFeedback(saveFeedback, String(e), 'error');
@@ -153,28 +141,4 @@ export function renderGeneral(config: AppConfig): void {
   hookBar.appendChild(hookFeedback);
   hookSection.appendChild(hookBar);
   container.appendChild(hookSection);
-}
-
-function buildToggle(checked: boolean, onChange: (v: boolean) => void): HTMLElement {
-  const label = document.createElement('label');
-  label.className = 'toggle';
-
-  const input = document.createElement('input');
-  input.type = 'checkbox';
-  input.checked = checked;
-  input.addEventListener('change', () => onChange(input.checked));
-
-  const slider = document.createElement('span');
-  slider.className = 'toggle-slider';
-
-  label.appendChild(input);
-  label.appendChild(slider);
-  return label;
-}
-
-function buildHint(text: string): HTMLElement {
-  const hint = document.createElement('div');
-  hint.className = 'form-hint';
-  hint.textContent = text;
-  return hint;
 }
