@@ -33,6 +33,12 @@ pub struct EventConfig {
     pub frame_interval_ms: u64,     // 애니메이션 프레임 간격
 }
 
+impl Default for EventConfig {
+    fn default() -> Self {
+        Self::new_enabled()
+    }
+}
+
 impl EventConfig {
     fn new_enabled() -> Self {
         Self {

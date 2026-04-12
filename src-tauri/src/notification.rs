@@ -8,7 +8,7 @@ use tauri::{
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::config::SharedConfig;
+use crate::config::{EventConfig, SharedConfig};
 use crate::server::HookEvent;
 use crate::session::{NotificationStatus, SessionState, SharedSessions};
 
@@ -53,6 +53,7 @@ pub struct NotificationShowPayload {
     pub session_id: String,
     pub event_name: String,
     pub cwd: Option<String>,
+    pub event_config: EventConfig,
 }
 
 // ---------------------------------------------------------------------------
@@ -118,11 +119,14 @@ pub async fn handle_hook_event(
         .map(|c| c.notification.timeout_secs)
         .unwrap_or(5);
 
-    // Retrieve the sound path for this event
-    let sound_path: Option<String> = config
+    // Retrieve event-specific config (sound, image, animation settings)
+    let (sound_path, event_cfg): (Option<String>, EventConfig) = config
         .read()
         .ok()
-        .and_then(|c| c.events.get(&event_name).and_then(|e| e.sound_path.clone()));
+        .and_then(|c| {
+            c.events.get(&event_name).map(|e| (e.sound_path.clone(), e.clone()))
+        })
+        .unwrap_or_else(|| (None, EventConfig::default()));
 
     // Check if the session already exists (keyed by safe_id).
     let existing_label: Option<String> = sessions
@@ -159,6 +163,7 @@ pub async fn handle_hook_event(
                         session_id: session_id.clone(),
                         event_name,
                         cwd,
+                        event_config: event_cfg.clone(),
                     },
                 )
                 .ok();
@@ -208,7 +213,7 @@ pub async fn handle_hook_event(
         let builder = WebviewWindowBuilder::new(
             &app,
             &window_label,
-            WebviewUrl::App("notification/index.html".into()),
+            WebviewUrl::App("src/notification/index.html".into()),
         )
         .decorations(false)
         .always_on_top(true)
@@ -294,6 +299,7 @@ pub async fn handle_hook_event(
                     session_id: session_id.clone(),
                     event_name,
                     cwd,
+                    event_config: event_cfg,
                 },
             )
             .ok();
