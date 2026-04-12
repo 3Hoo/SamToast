@@ -12,14 +12,6 @@
   "app": {
     "windows": [
       {
-        "label": "funny-toast-alarm",
-        "title": "FunnyToastAlarm",
-        "width": 400,
-        "height": 200,
-        "visible": false,
-        "url": "src/notification/index.html"
-      },
-      {
         "label": "settings",
         "title": "FunnyToastAlarm Settings",
         "url": "src/settings/index.html",
