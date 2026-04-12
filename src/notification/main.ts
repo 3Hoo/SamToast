@@ -60,12 +60,19 @@ function updateUI(
   cwd: string | undefined,
   cfg: EventConfig,
 ): void {
-  // Image container
+  // Image container — size only. Background is on the toast card, not the image box.
   const container = document.getElementById('image-container')!;
   container.style.width = cfg.image_area.width + 'px';
   container.style.height = cfg.image_area.height + 'px';
-  container.style.backgroundColor = hexToRgba(cfg.image_bg_color, cfg.image_bg_opacity);
-  container.style.opacity = '';
+
+  // Toast card background — let the user control the overall notification color.
+  // opacity=0 falls back to the CSS glassmorphism gradient.
+  const toastCard = document.getElementById('toast')!;
+  if (cfg.image_bg_opacity > 0) {
+    toastCard.style.background = hexToRgba(cfg.image_bg_color, cfg.image_bg_opacity);
+  } else {
+    toastCard.style.background = ''; // restore CSS gradient
+  }
 
   setImage(cfg.image_path, cfg.frame_interval_ms);
 
