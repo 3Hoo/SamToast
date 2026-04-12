@@ -62,6 +62,11 @@ function updatePreviewCard(key: EventKey): void {
     container.style.height = cfg.image_area.height + 'px';
   }
 
+  const wrapper = document.getElementById(`preview-wrapper-${key}`) as HTMLElement | null;
+  if (wrapper) {
+    wrapper.style.transform = `translate(${cfg.container_offset_x}px, ${cfg.container_offset_y}px)`;
+  }
+
   const imgEl = document.getElementById(`preview-image-${key}`) as HTMLImageElement | null;
   const iframeEl = document.getElementById(`preview-iframe-${key}`) as HTMLIFrameElement | null;
   const t = `translate(${cfg.image_offset_x}px, ${cfg.image_offset_y}px) scale(${cfg.image_scale})`;
@@ -73,15 +78,20 @@ function updatePreviewCard(key: EventKey): void {
     const name = cfg.label_app_name ?? '';
     appNameEl.textContent = name || 'App Name';
     appNameEl.style.display = name ? '' : 'none';
+    appNameEl.style.transform = `translate(${cfg.app_name_offset_x}px, ${cfg.app_name_offset_y}px) scale(${cfg.app_name_scale})`;
   }
 
   const cwdEl = document.getElementById(`preview-cwd-${key}`) as HTMLElement | null;
-  if (cwdEl) cwdEl.style.display = cfg.label_show_cwd ? '' : 'none';
+  if (cwdEl) {
+    cwdEl.style.display = cfg.label_show_cwd ? '' : 'none';
+    cwdEl.style.transform = `translate(${cfg.cwd_offset_x}px, ${cfg.cwd_offset_y}px) scale(${cfg.cwd_scale})`;
+  }
 
   const badgeEl = document.getElementById(`preview-badge-${key}`) as HTMLElement | null;
   if (badgeEl) {
     badgeEl.textContent = cfg.label_event_name ?? key;
     badgeEl.style.display = cfg.label_show_event_badge ? '' : 'none';
+    badgeEl.style.transform = `translate(${cfg.badge_offset_x}px, ${cfg.badge_offset_y}px) scale(${cfg.badge_scale})`;
   }
 
   updateSizeHint(key);
@@ -152,6 +162,7 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
 
   // ---- Image wrapper (holds container + area-resize handle) ----
   const imgWrapper = document.createElement('div');
+  imgWrapper.id = `preview-wrapper-${key}`;
   imgWrapper.className = 'preview-image-wrapper';
 
   // ---- Image container ----
@@ -190,7 +201,8 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
   // ---- Scale handle (inside container, bottom-right) ----
   const scaleHandle = document.createElement('div');
   scaleHandle.className = 'preview-scale-handle';
-  scaleHandle.title = 'Drag to scale image';
+  scaleHandle.title = 'Drag to scale inner image';
+  scaleHandle.innerHTML = '⊙';
 
   imgContainer.appendChild(img);
   imgContainer.appendChild(iframe);
@@ -201,8 +213,15 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
   areaHandle.className = 'preview-resize-handle';
   areaHandle.title = 'Drag to resize image area';
 
+  // ---- Container move handle (top-left) ----
+  const containerMove = document.createElement('div');
+  containerMove.className = 'preview-container-move-handle';
+  containerMove.title = 'Drag to move container';
+  containerMove.innerHTML = '☩';
+
   imgWrapper.appendChild(imgContainer);
   imgWrapper.appendChild(areaHandle);
+  imgWrapper.appendChild(containerMove);
 
   // ---- Info panel ----
   const infoPanel = document.createElement('div');
@@ -247,7 +266,78 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
     'Drag ▪ (bottom-right outside image) → image area  ·  Drag ▫ (bottom-right outside card) → window size'
   ));
 
-  // ---- Drag state ----
+  // ---- Generic Customization (Drag & Scroll) ----
+  const makeCustomizable = (
+    el: HTMLElement,
+    offsetXField: keyof EventConfig,
+    offsetYField: keyof EventConfig,
+    scaleField?: keyof EventConfig
+  ) => {
+    el.style.cursor = 'move';
+    el.style.transformOrigin = 'left center';
+    el.style.display = window.getComputedStyle(el).display === 'none' ? 'none' : 'inline-block';
+    
+    el.addEventListener('mousedown', (e) => {
+      // Allow bubbling if we clicked the scale handle (so we don't drag the text/container instead)
+      if ((e.target as HTMLElement).className.includes('handle')) return;
+      
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const cfg = workingEvents[key] as any;
+      if (!cfg) return;
+      const startOX = cfg[offsetXField] ?? 0;
+      const startOY = cfg[offsetYField] ?? 0;
+
+      const onMouseMove = (me: MouseEvent) => {
+        const newOX = Math.round(startOX + (me.clientX - startX));
+        const newOY = Math.round(startOY + (me.clientY - startY));
+        if (workingEvents[key]) {
+          (workingEvents[key] as any)[offsetXField] = newOX;
+          (workingEvents[key] as any)[offsetYField] = newOY;
+          updatePreviewCard(key);
+        }
+      };
+
+      const onMouseUp = () => {
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    });
+
+    if (scaleField) {
+      el.addEventListener('wheel', (e) => {
+        if (!e.shiftKey) return;
+        e.preventDefault();
+        const cfg = workingEvents[key] as any;
+        if (!cfg) return;
+        const currentScale = cfg[scaleField] ?? 1.0;
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        const newScale = Math.max(0.1, Math.min(5.0, currentScale + delta));
+        (workingEvents[key] as any)[scaleField] = Math.round(newScale * 10) / 10;
+        updatePreviewCard(key);
+      });
+    }
+  };
+
+  makeCustomizable(appNameEl, 'app_name_offset_x', 'app_name_offset_y', 'app_name_scale');
+  makeCustomizable(cwdEl, 'cwd_offset_x', 'cwd_offset_y', 'cwd_scale');
+  makeCustomizable(badgeEl, 'badge_offset_x', 'badge_offset_y', 'badge_scale');
+  // Use the dedicated handle to drag the container, leaving the inner image dragging alone
+  makeCustomizable(imgWrapper, 'container_offset_x', 'container_offset_y', undefined, containerMove);
+  
+  // Disable default drag for text selections inside customizable elements
+  [appNameEl, cwdEl, badgeEl].forEach(el => {
+    el.style.userSelect = 'none';
+  });
+
+  // ---- Drag state (for Resize & Image inside) ----
   let imageDragging = false;
   let imgStartX = 0, imgStartY = 0, imgStartOX = 0, imgStartOY = 0;
 

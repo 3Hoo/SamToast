@@ -70,17 +70,16 @@ body {
 }
 
 .image-container img {
-  /* Render at natural size; scale down proportionally if larger than container.
-     The container is a clipping window — the image itself is never stretched. */
+  /* Render unbounded so transform pan/zoom scales without clipping bounds */
   display: block;
   width: auto;
   height: auto;
-  max-width: 100%;
-  max-height: 100%;
+  max-width: none;
+  max-height: none;
   object-fit: none;
-  image-rendering: pixelated;
   color: transparent;
   font-size: 0;
+  image-rendering: auto;
 }
 
 /* Fix iframe rendering issue */
@@ -88,14 +87,14 @@ body {
   width: 100%;
   height: 100%;
   border: none;
-  /* Ensure it has transparent background by default to match the premium theme */
   background: transparent;
   overflow: hidden;
+  pointer-events: none;
 }
 
 .toast-info {
   flex: 1;
-  overflow: hidden;
+  overflow: visible; /* Prevent batch/cwd from getting clipped when offset */
   display: flex;
   flex-direction: column;
   justify-content: center;

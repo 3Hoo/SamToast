@@ -36,24 +36,51 @@ pub struct EventConfig {
     pub image_offset_x: i32,
     #[serde(default)]
     pub image_offset_y: i32,
-    #[serde(default = "default_image_scale")]
+    #[serde(default = "default_scale")]
     pub image_scale: f32,           // 1.0 = 원본 크기
+    // 이미지 컨테이너 위치 오프셋
+    #[serde(default)]
+    pub container_offset_x: i32,
+    #[serde(default)]
+    pub container_offset_y: i32,
+    
     // 알림 배경 표시 여부 (false면 완전 투명, opacity 로직 무시)
     #[serde(default = "default_true")]
     pub bg_visible: bool,
-    // 알림 창 텍스트 커스터마이징
+    
+    // 알림 창 텍스트 커스터마이징 및 위치/크기 조정
     #[serde(default)]
     pub label_app_name: Option<String>,      // None/빈칸 = 숨김
+    #[serde(default)]
+    pub app_name_offset_x: i32,
+    #[serde(default)]
+    pub app_name_offset_y: i32,
+    #[serde(default = "default_scale")]
+    pub app_name_scale: f32,
+
     #[serde(default = "default_true")]
     pub label_show_cwd: bool,
+    #[serde(default)]
+    pub cwd_offset_x: i32,
+    #[serde(default)]
+    pub cwd_offset_y: i32,
+    #[serde(default = "default_scale")]
+    pub cwd_scale: f32,
+
     #[serde(default = "default_true")]
     pub label_show_event_badge: bool,
     #[serde(default)]
     pub label_event_name: Option<String>,    // None = 이벤트 키 이름 (e.g. "Stop")
+    #[serde(default)]
+    pub badge_offset_x: i32,
+    #[serde(default)]
+    pub badge_offset_y: i32,
+    #[serde(default = "default_scale")]
+    pub badge_scale: f32,
 }
 
 fn default_true() -> bool { true }
-fn default_image_scale() -> f32 { 1.0 }
+fn default_scale() -> f32 { 1.0 }
 
 impl Default for EventConfig {
     fn default() -> Self {
@@ -74,11 +101,25 @@ impl EventConfig {
             image_offset_x: 0,
             image_offset_y: 0,
             image_scale: 1.0,
+            container_offset_x: 0,
+            container_offset_y: 0,
             bg_visible: true,
+            
             label_app_name: None,
+            app_name_offset_x: 0,
+            app_name_offset_y: 0,
+            app_name_scale: 1.0,
+
             label_show_cwd: true,
+            cwd_offset_x: 0,
+            cwd_offset_y: 0,
+            cwd_scale: 1.0,
+
             label_show_event_badge: true,
             label_event_name: None,
+            badge_offset_x: 0,
+            badge_offset_y: 0,
+            badge_scale: 1.0,
         }
     }
 
