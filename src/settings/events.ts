@@ -166,6 +166,92 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   imageGroup.appendChild(buildHint('Select an image, an HTML file, or a folder with numbered images (0.png, 1.png…) for animation.'));
   inner.appendChild(imageGroup);
 
+  // --- Background color ---
+  const bgColorGroup = document.createElement('div');
+  bgColorGroup.className = 'form-group';
+
+  const bgColorLabel = document.createElement('label');
+  bgColorLabel.className = 'form-label';
+  bgColorLabel.textContent = 'Image Background Color';
+  bgColorGroup.appendChild(bgColorLabel);
+
+  const bgColorRow = document.createElement('div');
+  bgColorRow.className = 'path-row';
+  bgColorRow.style.alignItems = 'center';
+  bgColorRow.style.gap = '10px';
+
+  const bgColorInput = document.createElement('input');
+  bgColorInput.type = 'color';
+  bgColorInput.className = 'form-color';
+  bgColorInput.value = cfg.image_bg_color;
+  bgColorInput.addEventListener('input', () => {
+    workingEvents[key]!.image_bg_color = bgColorInput.value;
+    void refreshPreview(key);
+  });
+
+  const bgColorText = document.createElement('input');
+  bgColorText.type = 'text';
+  bgColorText.className = 'form-input';
+  bgColorText.style.width = '100px';
+  bgColorText.value = cfg.image_bg_color;
+  bgColorText.placeholder = '#000000';
+  bgColorText.addEventListener('input', () => {
+    const hex = bgColorText.value;
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      bgColorInput.value = hex;
+      workingEvents[key]!.image_bg_color = hex;
+      void refreshPreview(key);
+    }
+  });
+  bgColorInput.addEventListener('input', () => {
+    bgColorText.value = bgColorInput.value;
+  });
+
+  bgColorRow.appendChild(bgColorInput);
+  bgColorRow.appendChild(bgColorText);
+  bgColorGroup.appendChild(bgColorRow);
+  inner.appendChild(bgColorGroup);
+
+  // --- Background opacity ---
+  const bgOpacityGroup = document.createElement('div');
+  bgOpacityGroup.className = 'form-group';
+
+  const bgOpacityLabel = document.createElement('label');
+  bgOpacityLabel.className = 'form-label';
+  bgOpacityLabel.textContent = `Image Background Opacity`;
+  bgOpacityGroup.appendChild(bgOpacityLabel);
+
+  const bgOpacityRow = document.createElement('div');
+  bgOpacityRow.className = 'path-row';
+  bgOpacityRow.style.alignItems = 'center';
+  bgOpacityRow.style.gap = '10px';
+
+  const bgOpacityRange = document.createElement('input');
+  bgOpacityRange.type = 'range';
+  bgOpacityRange.min = '0';
+  bgOpacityRange.max = '1';
+  bgOpacityRange.step = '0.05';
+  bgOpacityRange.value = String(cfg.image_bg_opacity);
+  bgOpacityRange.style.flex = '1';
+
+  const bgOpacityValue = document.createElement('span');
+  bgOpacityValue.className = 'form-hint';
+  bgOpacityValue.style.minWidth = '36px';
+  bgOpacityValue.style.textAlign = 'right';
+  bgOpacityValue.textContent = Math.round(cfg.image_bg_opacity * 100) + '%';
+
+  bgOpacityRange.addEventListener('input', () => {
+    const v = parseFloat(bgOpacityRange.value);
+    workingEvents[key]!.image_bg_opacity = v;
+    bgOpacityValue.textContent = Math.round(v * 100) + '%';
+    void refreshPreview(key);
+  });
+
+  bgOpacityRow.appendChild(bgOpacityRange);
+  bgOpacityRow.appendChild(bgOpacityValue);
+  bgOpacityGroup.appendChild(bgOpacityRow);
+  inner.appendChild(bgOpacityGroup);
+
   // --- Frame interval ---
   const fpsGroup = document.createElement('div');
   fpsGroup.className = 'form-group';
