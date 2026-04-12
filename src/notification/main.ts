@@ -15,6 +15,10 @@ interface EventConfig {
   image_bg_color: string;
   image_bg_opacity: number;
   frame_interval_ms: number;
+  label_app_name: string | null;
+  label_show_cwd: boolean;
+  label_show_event_badge: boolean;
+  label_event_name: string | null;
 }
 
 interface NotificationShowPayload {
@@ -45,6 +49,10 @@ const DEFAULT_EVENT_CONFIG: EventConfig = {
   image_bg_color: '#000000',
   image_bg_opacity: 0,
   frame_interval_ms: 100,
+  label_app_name: null,
+  label_show_cwd: true,
+  label_show_event_badge: true,
+  label_event_name: null,
 };
 
 function updateUI(
@@ -52,9 +60,7 @@ function updateUI(
   cwd: string | undefined,
   cfg: EventConfig,
 ): void {
-  document.getElementById('session-cwd')!.textContent = cwd ?? '';
-  document.getElementById('event-badge')!.textContent = event_name;
-
+  // Image container
   const container = document.getElementById('image-container')!;
   container.style.width = cfg.image_area.width + 'px';
   container.style.height = cfg.image_area.height + 'px';
@@ -62,6 +68,20 @@ function updateUI(
   container.style.opacity = '';
 
   setImage(cfg.image_path, cfg.frame_interval_ms);
+
+  // App name
+  const appNameEl = document.getElementById('app-name')!;
+  appNameEl.textContent = cfg.label_app_name ?? 'Claude Code';
+
+  // CWD
+  const cwdEl = document.getElementById('session-cwd')!;
+  cwdEl.textContent = cwd ?? '';
+  cwdEl.style.display = cfg.label_show_cwd ? '' : 'none';
+
+  // Event badge
+  const badgeEl = document.getElementById('event-badge')!;
+  badgeEl.textContent = cfg.label_event_name ?? event_name;
+  badgeEl.style.display = cfg.label_show_event_badge ? '' : 'none';
 }
 
 // ---------------------------------------------------------------------------

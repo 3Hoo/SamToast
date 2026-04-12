@@ -23,14 +23,39 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
   const panel = document.createElement('div');
   panel.className = 'preview-panel';
 
+  const labelRow = document.createElement('div');
+  labelRow.style.display = 'flex';
+  labelRow.style.alignItems = 'center';
+  labelRow.style.justifyContent = 'space-between';
+  labelRow.style.marginBottom = '8px';
+
   const label = document.createElement('div');
   label.className = 'preview-label';
-  label.textContent = 'Image Preview';
-  panel.appendChild(label);
+  label.textContent = 'Preview';
+  labelRow.appendChild(label);
+
+  const sizeHint = document.createElement('span');
+  sizeHint.className = 'form-hint';
+  sizeHint.id = `preview-size-hint-${key}`;
+  const cfg0 = workingEvents[key];
+  sizeHint.textContent = cfg0 ? `${cfg0.image_area.width} × ${cfg0.image_area.height} px` : '';
+  labelRow.appendChild(sizeHint);
+
+  panel.appendChild(labelRow);
+
+  // Wrapper adds padding so the resize handle is always accessible
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.display = 'inline-block';
 
   const container = document.createElement('div');
   container.className = 'preview-image-container';
   container.id = `preview-container-${key}`;
+  const initCfg = workingEvents[key];
+  if (initCfg) {
+    container.style.width = initCfg.image_area.width + 'px';
+    container.style.height = initCfg.image_area.height + 'px';
+  }
 
   const img = document.createElement('img');
   img.id = `preview-image-${key}`;
@@ -46,7 +71,55 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
 
   container.appendChild(img);
   container.appendChild(iframe);
-  panel.appendChild(container);
+
+  // Resize handle — bottom-right corner drag to resize image area
+  const handle = document.createElement('div');
+  handle.className = 'preview-resize-handle';
+  handle.title = 'Drag to resize';
+
+  let resizing = false;
+  let startX = 0, startY = 0, startW = 0, startH = 0;
+
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizing = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    const cfg = workingEvents[key];
+    startW = cfg ? cfg.image_area.width : parseInt(container.style.width) || 80;
+    startH = cfg ? cfg.image_area.height : parseInt(container.style.height) || 80;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!resizing) return;
+    const newW = Math.max(24, Math.round(startW + (e.clientX - startX)));
+    const newH = Math.max(24, Math.round(startH + (e.clientY - startY)));
+    container.style.width = newW + 'px';
+    container.style.height = newH + 'px';
+    const hint = document.getElementById(`preview-size-hint-${key}`);
+    if (hint) hint.textContent = `${newW} × ${newH} px`;
+    // Sync numeric inputs if open
+    const wInput = document.getElementById(`area-w-${key}`) as HTMLInputElement | null;
+    const hInput = document.getElementById(`area-h-${key}`) as HTMLInputElement | null;
+    if (wInput) wInput.value = String(newW);
+    if (hInput) hInput.value = String(newH);
+    if (workingEvents[key]) {
+      workingEvents[key]!.image_area = { width: newW, height: newH };
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (resizing) {
+      resizing = false;
+      void refreshPreview(key);
+    }
+  });
+
+  wrapper.appendChild(container);
+  wrapper.appendChild(handle);
+  panel.appendChild(wrapper);
+  panel.appendChild(buildHint('Drag the corner handle to resize. This sets the image container size in the notification.'));
   return panel;
 }
 
@@ -278,8 +351,149 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   fpsGroup.appendChild(buildHint('Minimum 16 ms (~60fps). Used for animated image folders.'));
   inner.appendChild(fpsGroup);
 
+  // --- Image area (numeric inputs — preview also has drag handle) ---
+  const areaGroup = document.createElement('div');
+  areaGroup.className = 'form-group';
+
+  const areaLabel = document.createElement('label');
+  areaLabel.className = 'form-label';
+  areaLabel.textContent = 'Image Area Size (px)';
+  areaGroup.appendChild(areaLabel);
+
+  const areaRow = document.createElement('div');
+  areaRow.className = 'path-row';
+  areaRow.style.gap = '8px';
+  areaRow.style.alignItems = 'center';
+
+  const makeAreaInput = (id: string, value: number, dim: 'width' | 'height') => {
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.gap = '6px';
+    const lbl = document.createElement('span');
+    lbl.className = 'form-hint';
+    lbl.textContent = dim === 'width' ? 'W' : 'H';
+    const inp = document.createElement('input');
+    inp.type = 'number';
+    inp.id = id;
+    inp.className = 'form-input';
+    inp.style.width = '72px';
+    inp.min = '24';
+    inp.max = '600';
+    inp.value = String(value);
+    inp.addEventListener('change', () => {
+      const v = Math.max(24, Math.min(600, parseInt(inp.value, 10) || 80));
+      inp.value = String(v);
+      workingEvents[key]!.image_area[dim] = v;
+      // Sync preview container size
+      const container = document.getElementById(`preview-container-${key}`);
+      if (container) container.style[dim === 'width' ? 'width' : 'height'] = v + 'px';
+      const hint = document.getElementById(`preview-size-hint-${key}`);
+      const other = dim === 'width'
+        ? workingEvents[key]!.image_area.height
+        : workingEvents[key]!.image_area.width;
+      if (hint) hint.textContent = dim === 'width' ? `${v} × ${other} px` : `${other} × ${v} px`;
+      void refreshPreview(key);
+    });
+    wrap.appendChild(lbl);
+    wrap.appendChild(inp);
+    return wrap;
+  };
+
+  areaRow.appendChild(makeAreaInput(`area-w-${key}`, cfg.image_area.width, 'width'));
+  areaRow.appendChild(makeAreaInput(`area-h-${key}`, cfg.image_area.height, 'height'));
+  areaGroup.appendChild(areaRow);
+  areaGroup.appendChild(buildHint('Or drag the corner of the preview below.'));
+  inner.appendChild(areaGroup);
+
   // --- Preview ---
   inner.appendChild(buildPreviewPanel(key));
+
+  // --- Text customization ---
+  const textSection = document.createElement('div');
+  textSection.className = 'form-group';
+  textSection.style.borderTop = '1px solid var(--border)';
+  textSection.style.paddingTop = '14px';
+  textSection.style.marginTop = '4px';
+
+  const textSectionLabel = document.createElement('div');
+  textSectionLabel.className = 'form-label';
+  textSectionLabel.textContent = 'Label Customization';
+  textSectionLabel.style.marginBottom = '12px';
+  textSection.appendChild(textSectionLabel);
+
+  // App name
+  const appNameGroup = document.createElement('div');
+  appNameGroup.className = 'form-group';
+  appNameGroup.style.marginBottom = '10px';
+  const appNameLabel = document.createElement('label');
+  appNameLabel.className = 'form-label';
+  appNameLabel.textContent = 'App Name';
+  appNameGroup.appendChild(appNameLabel);
+  const appNameInput = document.createElement('input');
+  appNameInput.type = 'text';
+  appNameInput.className = 'form-input';
+  appNameInput.placeholder = 'Claude Code';
+  appNameInput.value = cfg.label_app_name ?? '';
+  appNameInput.addEventListener('input', () => {
+    workingEvents[key]!.label_app_name = appNameInput.value.trim() || null;
+  });
+  appNameGroup.appendChild(appNameInput);
+  textSection.appendChild(appNameGroup);
+
+  // Event display name
+  const evNameGroup = document.createElement('div');
+  evNameGroup.className = 'form-group';
+  evNameGroup.style.marginBottom = '10px';
+  const evNameLabel = document.createElement('label');
+  evNameLabel.className = 'form-label';
+  evNameLabel.textContent = 'Event Badge Text';
+  evNameGroup.appendChild(evNameLabel);
+  const evNameInput = document.createElement('input');
+  evNameInput.type = 'text';
+  evNameInput.className = 'form-input';
+  evNameInput.placeholder = key; // default = event key e.g. "Stop"
+  evNameInput.value = cfg.label_event_name ?? '';
+  evNameInput.addEventListener('input', () => {
+    workingEvents[key]!.label_event_name = evNameInput.value.trim() || null;
+  });
+  evNameGroup.appendChild(evNameInput);
+  textSection.appendChild(evNameGroup);
+
+  // Show CWD toggle
+  const cwdToggleRow = document.createElement('div');
+  cwdToggleRow.style.display = 'flex';
+  cwdToggleRow.style.alignItems = 'center';
+  cwdToggleRow.style.gap = '10px';
+  cwdToggleRow.style.marginBottom = '8px';
+  const cwdToggle = buildToggle(cfg.label_show_cwd, (checked) => {
+    workingEvents[key]!.label_show_cwd = checked;
+  });
+  const cwdToggleLabel = document.createElement('span');
+  cwdToggleLabel.className = 'form-hint';
+  cwdToggleLabel.style.color = 'var(--text-secondary)';
+  cwdToggleLabel.textContent = 'Show working directory path';
+  cwdToggleRow.appendChild(cwdToggle);
+  cwdToggleRow.appendChild(cwdToggleLabel);
+  textSection.appendChild(cwdToggleRow);
+
+  // Show event badge toggle
+  const badgeToggleRow = document.createElement('div');
+  badgeToggleRow.style.display = 'flex';
+  badgeToggleRow.style.alignItems = 'center';
+  badgeToggleRow.style.gap = '10px';
+  const badgeToggle = buildToggle(cfg.label_show_event_badge, (checked) => {
+    workingEvents[key]!.label_show_event_badge = checked;
+  });
+  const badgeToggleLabel = document.createElement('span');
+  badgeToggleLabel.className = 'form-hint';
+  badgeToggleLabel.style.color = 'var(--text-secondary)';
+  badgeToggleLabel.textContent = 'Show event badge';
+  badgeToggleRow.appendChild(badgeToggle);
+  badgeToggleRow.appendChild(badgeToggleLabel);
+  textSection.appendChild(badgeToggleRow);
+
+  inner.appendChild(textSection);
 
   // --- Save button ---
   const saveBar = document.createElement('div');

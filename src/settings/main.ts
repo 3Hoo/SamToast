@@ -22,6 +22,10 @@ export interface EventConfig {
   image_bg_color: string;
   image_bg_opacity: number;
   frame_interval_ms: number;
+  label_app_name: string | null;
+  label_show_cwd: boolean;
+  label_show_event_badge: boolean;
+  label_event_name: string | null;
 }
 
 export type OnClickClose = 'instant' | 'animate';

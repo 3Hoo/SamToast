@@ -28,10 +28,21 @@ pub struct EventConfig {
     pub sound_path: Option<String>,
     pub image_path: Option<String>,
     pub image_area: ImageArea,
-    pub image_bg_color: String,     // hex e.g. "#000000"
-    pub image_bg_opacity: f32,      // 0.0 ~ 1.0
-    pub frame_interval_ms: u64,     // 애니메이션 프레임 간격
+    pub image_bg_color: String,          // hex e.g. "#000000"
+    pub image_bg_opacity: f32,           // 0.0 ~ 1.0
+    pub frame_interval_ms: u64,          // 애니메이션 프레임 간격
+    // 알림 창 텍스트 커스터마이징
+    #[serde(default)]
+    pub label_app_name: Option<String>,      // None = "Claude Code"
+    #[serde(default = "default_true")]
+    pub label_show_cwd: bool,
+    #[serde(default = "default_true")]
+    pub label_show_event_badge: bool,
+    #[serde(default)]
+    pub label_event_name: Option<String>,    // None = 이벤트 키 이름 (e.g. "Stop")
 }
+
+fn default_true() -> bool { true }
 
 impl Default for EventConfig {
     fn default() -> Self {
@@ -49,6 +60,10 @@ impl EventConfig {
             image_bg_color: "#000000".to_string(),
             image_bg_opacity: 0.0,
             frame_interval_ms: 100,
+            label_app_name: None,
+            label_show_cwd: true,
+            label_show_event_badge: true,
+            label_event_name: None,
         }
     }
 
