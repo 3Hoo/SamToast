@@ -15,6 +15,10 @@ interface EventConfig {
   image_bg_color: string;
   image_bg_opacity: number;
   frame_interval_ms: number;
+  image_offset_x: number;
+  image_offset_y: number;
+  image_scale: number;
+  bg_visible: boolean;
   label_app_name: string | null;
   label_show_cwd: boolean;
   label_show_event_badge: boolean;
@@ -43,49 +47,73 @@ function hexToRgba(hex: string, opacity: number): string {
 // UI update
 // ---------------------------------------------------------------------------
 
-// Default config used until Phase 5 populates event_config from the backend.
 const DEFAULT_EVENT_CONFIG: EventConfig = {
   image_area: { width: 64, height: 64 },
   image_bg_color: '#000000',
   image_bg_opacity: 0,
   frame_interval_ms: 100,
+  image_offset_x: 0,
+  image_offset_y: 0,
+  image_scale: 1,
+  bg_visible: true,
   label_app_name: null,
   label_show_cwd: true,
   label_show_event_badge: true,
   label_event_name: null,
 };
 
-function updateUI(
-  event_name: string,
-  cwd: string | undefined,
-  cfg: EventConfig,
-): void {
-  // Image container — size only. Background is on the toast card, not the image box.
+function updateUI(event_name: string, cwd: string | undefined, cfg: EventConfig): void {
+  // --- Image container size ---
   const container = document.getElementById('image-container')!;
   container.style.width = cfg.image_area.width + 'px';
   container.style.height = cfg.image_area.height + 'px';
 
-  // Toast card background — let the user control the overall notification color.
-  // opacity=0 falls back to the CSS glassmorphism gradient.
-  const toastCard = document.getElementById('toast')!;
-  if (cfg.image_bg_opacity > 0) {
-    toastCard.style.background = hexToRgba(cfg.image_bg_color, cfg.image_bg_opacity);
-  } else {
-    toastCard.style.background = ''; // restore CSS gradient
-  }
+  // --- Image transform: offset + scale (applied to img and iframe) ---
+  const transform = `translate(${cfg.image_offset_x}px, ${cfg.image_offset_y}px) scale(${cfg.image_scale})`;
+  const imgEl = document.getElementById('toast-image') as HTMLImageElement;
+  const iframeEl = document.getElementById('toast-iframe') as HTMLIFrameElement;
+  imgEl.style.transform = transform;
+  iframeEl.style.transform = transform;
 
   setImage(cfg.image_path, cfg.frame_interval_ms);
 
-  // App name
-  const appNameEl = document.getElementById('app-name')!;
-  appNameEl.textContent = cfg.label_app_name ?? 'Claude Code';
+  // --- Toast card background ---
+  const toastCard = document.getElementById('toast')!;
+  if (!cfg.bg_visible) {
+    // Fully transparent — no glassmorphism, no shadow, no border
+    toastCard.style.background = 'transparent';
+    toastCard.style.boxShadow = 'none';
+    toastCard.style.backdropFilter = 'none';
+    (toastCard.style as CSSStyleDeclaration & { webkitBackdropFilter: string }).webkitBackdropFilter = 'none';
+    toastCard.style.border = 'none';
+  } else if (cfg.image_bg_opacity > 0) {
+    // Solid color override
+    toastCard.style.background = hexToRgba(cfg.image_bg_color, cfg.image_bg_opacity);
+    toastCard.style.boxShadow = '';
+    toastCard.style.backdropFilter = '';
+    (toastCard.style as CSSStyleDeclaration & { webkitBackdropFilter: string }).webkitBackdropFilter = '';
+    toastCard.style.border = '';
+  } else {
+    // Default glassmorphism (restore CSS)
+    toastCard.style.background = '';
+    toastCard.style.boxShadow = '';
+    toastCard.style.backdropFilter = '';
+    (toastCard.style as CSSStyleDeclaration & { webkitBackdropFilter: string }).webkitBackdropFilter = '';
+    toastCard.style.border = '';
+  }
 
-  // CWD
+  // --- App name: empty/null = hidden ---
+  const appNameEl = document.getElementById('app-name')!;
+  const name = cfg.label_app_name ?? '';
+  appNameEl.textContent = name;
+  appNameEl.style.display = name ? '' : 'none';
+
+  // --- CWD ---
   const cwdEl = document.getElementById('session-cwd')!;
   cwdEl.textContent = cwd ?? '';
   cwdEl.style.display = cfg.label_show_cwd ? '' : 'none';
 
-  // Event badge
+  // --- Event badge ---
   const badgeEl = document.getElementById('event-badge')!;
   badgeEl.textContent = cfg.label_event_name ?? event_name;
   badgeEl.style.display = cfg.label_show_event_badge ? '' : 'none';
@@ -93,14 +121,10 @@ function updateUI(
 
 // ---------------------------------------------------------------------------
 // Drag + click
-//
-// startDragging() is called only after the pointer has moved DRAG_THRESHOLD px
-// from the mousedown position. This ensures a plain click doesn't get absorbed
-// by the drag guard and still invokes on_notification_click.
 // ---------------------------------------------------------------------------
 
 const toastEl = document.getElementById('toast')!;
-const DRAG_THRESHOLD = 4; // pixels before we consider it a drag
+const DRAG_THRESHOLD = 4;
 let mouseDownPos = { x: 0, y: 0 };
 let isDragging = false;
 
@@ -127,7 +151,7 @@ toastEl.addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Event listeners (async IIFE for proper unlisten handle management)
+// Event listeners
 // ---------------------------------------------------------------------------
 
 (async () => {
@@ -143,6 +167,5 @@ toastEl.addEventListener('click', async () => {
     await invoke('on_notification_closing');
   });
 
-  // Signal backend that we are ready to receive the payload
   await appWindow.emit('notification-ready');
 })();

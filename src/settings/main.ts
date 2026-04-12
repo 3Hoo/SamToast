@@ -22,6 +22,10 @@ export interface EventConfig {
   image_bg_color: string;
   image_bg_opacity: number;
   frame_interval_ms: number;
+  image_offset_x: number;
+  image_offset_y: number;
+  image_scale: number;
+  bg_visible: boolean;
   label_app_name: string | null;
   label_show_cwd: boolean;
   label_show_event_badge: boolean;
@@ -35,6 +39,8 @@ export interface NotificationConfig {
   on_click_focus_session: boolean;
   on_click_close: OnClickClose;
   close_image_path: string | null;
+  window_width: number;
+  window_height: number;
 }
 
 export interface SessionPos {

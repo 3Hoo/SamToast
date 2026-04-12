@@ -16,8 +16,6 @@ use crate::session::{NotificationStatus, SessionState, SharedSessions};
 // Constants
 // ---------------------------------------------------------------------------
 
-const NOTIF_WIDTH: f64 = 360.0;
-const NOTIF_HEIGHT: f64 = 130.0;
 const NOTIF_MARGIN: f64 = 20.0;
 
 // ---------------------------------------------------------------------------
@@ -113,11 +111,16 @@ pub async fn handle_hook_event(
         })
         .collect();
 
-    // Retrieve timeout setting before taking any locks
+    // Retrieve timeout + window size settings before taking any locks
     let timeout_secs = config
         .read()
         .map(|c| c.notification.timeout_secs)
         .unwrap_or(5);
+
+    let (notif_width, notif_height) = config
+        .read()
+        .map(|c| (c.notification.window_width as f64, c.notification.window_height as f64))
+        .unwrap_or((360.0, 130.0));
 
     // Retrieve event-specific config (sound, image, animation settings)
     let (sound_path, event_cfg): (Option<String>, EventConfig) = config
@@ -140,6 +143,11 @@ pub async fn handle_hook_event(
         // ----------------------------------------------------------------
         if let Some(window) = app.get_webview_window(&window_label) {
             window.show().ok();
+            // Resize to current config dimensions (user may have changed them)
+            window.set_size(tauri::Size::Logical(tauri::LogicalSize {
+                width: notif_width,
+                height: notif_height,
+            })).ok();
 
             // Cancel any running timeout, then issue a fresh token
             let new_token = CancellationToken::new();
@@ -221,7 +229,7 @@ pub async fn handle_hook_event(
         .shadow(false)
         .skip_taskbar(true)
         .visible(false)
-        .inner_size(NOTIF_WIDTH, NOTIF_HEIGHT);
+        .inner_size(notif_width, notif_height);
 
         let window = match builder.build() {
             Ok(w) => w,
@@ -250,7 +258,7 @@ pub async fn handle_hook_event(
             );
             window.set_position(phys).ok();
         } else if let Ok(Some(monitor)) = window.current_monitor() {
-            let pos = get_bottom_right_position(&monitor, NOTIF_WIDTH, NOTIF_HEIGHT, NOTIF_MARGIN);
+            let pos = get_bottom_right_position(&monitor, notif_width, notif_height, NOTIF_MARGIN);
             window.set_position(pos).ok();
         }
 

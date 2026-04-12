@@ -31,9 +31,19 @@ pub struct EventConfig {
     pub image_bg_color: String,          // hex e.g. "#000000"
     pub image_bg_opacity: f32,           // 0.0 ~ 1.0
     pub frame_interval_ms: u64,          // 애니메이션 프레임 간격
+    // 이미지 렌더링 위치·크기 (컨테이너 기준 transform)
+    #[serde(default)]
+    pub image_offset_x: i32,
+    #[serde(default)]
+    pub image_offset_y: i32,
+    #[serde(default = "default_image_scale")]
+    pub image_scale: f32,           // 1.0 = 원본 크기
+    // 알림 배경 표시 여부 (false면 완전 투명, opacity 로직 무시)
+    #[serde(default = "default_true")]
+    pub bg_visible: bool,
     // 알림 창 텍스트 커스터마이징
     #[serde(default)]
-    pub label_app_name: Option<String>,      // None = "Claude Code"
+    pub label_app_name: Option<String>,      // None/빈칸 = 숨김
     #[serde(default = "default_true")]
     pub label_show_cwd: bool,
     #[serde(default = "default_true")]
@@ -43,6 +53,7 @@ pub struct EventConfig {
 }
 
 fn default_true() -> bool { true }
+fn default_image_scale() -> f32 { 1.0 }
 
 impl Default for EventConfig {
     fn default() -> Self {
@@ -60,6 +71,10 @@ impl EventConfig {
             image_bg_color: "#000000".to_string(),
             image_bg_opacity: 0.0,
             frame_interval_ms: 100,
+            image_offset_x: 0,
+            image_offset_y: 0,
+            image_scale: 1.0,
+            bg_visible: true,
             label_app_name: None,
             label_show_cwd: true,
             label_show_event_badge: true,
@@ -83,6 +98,9 @@ pub enum OnClickClose {
     Animate,  // 닫기 애니메이션 후 닫기
 }
 
+fn default_notif_width() -> u32 { 360 }
+fn default_notif_height() -> u32 { 130 }
+
 // 알림 동작 설정
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -91,6 +109,10 @@ pub struct NotificationConfig {
     pub on_click_focus_session: bool,
     pub on_click_close: OnClickClose,
     pub close_image_path: Option<String>,
+    #[serde(default = "default_notif_width")]
+    pub window_width: u32,            // 알림 창 너비 (논리 픽셀)
+    #[serde(default = "default_notif_height")]
+    pub window_height: u32,           // 알림 창 높이 (논리 픽셀)
 }
 
 impl Default for NotificationConfig {
@@ -100,6 +122,8 @@ impl Default for NotificationConfig {
             on_click_focus_session: true,
             on_click_close: OnClickClose::Animate,
             close_image_path: None,
+            window_width: 360,
+            window_height: 130,
         }
     }
 }

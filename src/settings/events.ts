@@ -19,42 +19,148 @@ type EventKey = (typeof EVENT_KEYS)[number];
 // Keep a working copy of each event's config so we can save later.
 let workingEvents: Record<string, EventConfig> = {};
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function hexToRgba(hex: string, opacity: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+function applyCardBackground(el: HTMLElement, cfg: EventConfig): void {
+  if (!cfg.bg_visible) {
+    // Checkerboard to indicate full transparency
+    el.style.background =
+      'repeating-conic-gradient(rgba(255,255,255,0.05) 0% 25%, transparent 0% 50%) 0 0 / 14px 14px';
+    el.style.boxShadow = 'none';
+    el.style.border = '1px dashed rgba(255,255,255,0.18)';
+  } else if (cfg.image_bg_opacity > 0) {
+    el.style.background = hexToRgba(cfg.image_bg_color, cfg.image_bg_opacity);
+    el.style.boxShadow = '';
+    el.style.border = '1px solid rgba(255,255,255,0.08)';
+  } else {
+    el.style.background = '';
+    el.style.boxShadow = '';
+    el.style.border = '';
+  }
+}
+
+/** Sync all preview card elements from workingEvents[key]. */
+function updatePreviewCard(key: EventKey): void {
+  const cfg = workingEvents[key];
+  if (!cfg) return;
+
+  const card = document.getElementById(`preview-card-${key}`) as HTMLElement | null;
+  if (card) applyCardBackground(card, cfg);
+
+  const container = document.getElementById(`preview-container-${key}`) as HTMLElement | null;
+  if (container) {
+    container.style.width = cfg.image_area.width + 'px';
+    container.style.height = cfg.image_area.height + 'px';
+  }
+
+  const imgEl = document.getElementById(`preview-image-${key}`) as HTMLImageElement | null;
+  const iframeEl = document.getElementById(`preview-iframe-${key}`) as HTMLIFrameElement | null;
+  const t = `translate(${cfg.image_offset_x}px, ${cfg.image_offset_y}px) scale(${cfg.image_scale})`;
+  if (imgEl) imgEl.style.transform = t;
+  if (iframeEl) iframeEl.style.transform = t;
+
+  const appNameEl = document.getElementById(`preview-app-name-${key}`) as HTMLElement | null;
+  if (appNameEl) {
+    const name = cfg.label_app_name ?? '';
+    appNameEl.textContent = name || 'App Name';
+    appNameEl.style.display = name ? '' : 'none';
+  }
+
+  const cwdEl = document.getElementById(`preview-cwd-${key}`) as HTMLElement | null;
+  if (cwdEl) cwdEl.style.display = cfg.label_show_cwd ? '' : 'none';
+
+  const badgeEl = document.getElementById(`preview-badge-${key}`) as HTMLElement | null;
+  if (badgeEl) {
+    badgeEl.textContent = cfg.label_event_name ?? key;
+    badgeEl.style.display = cfg.label_show_event_badge ? '' : 'none';
+  }
+
+  updateSizeHint(key);
+}
+
+function updateSizeHint(key: EventKey): void {
+  const hint = document.getElementById(`preview-size-hint-${key}`);
+  if (!hint) return;
+  const cfg = workingEvents[key];
+  if (!cfg) return;
+  const nc = getConfig().notification;
+  hint.textContent =
+    `Window: ${nc.window_width ?? 360}×${nc.window_height ?? 130}px  ·  ` +
+    `Image area: ${cfg.image_area.width}×${cfg.image_area.height}px  ·  ` +
+    `Scale: ${cfg.image_scale.toFixed(2)}×`;
+}
+
+// ---------------------------------------------------------------------------
+// Full notification preview panel
+// ---------------------------------------------------------------------------
+
 function buildPreviewPanel(key: EventKey): HTMLElement {
   const panel = document.createElement('div');
   panel.className = 'preview-panel';
 
+  // Header row
   const labelRow = document.createElement('div');
   labelRow.style.display = 'flex';
   labelRow.style.alignItems = 'center';
   labelRow.style.justifyContent = 'space-between';
-  labelRow.style.marginBottom = '8px';
+  labelRow.style.marginBottom = '2px';
 
   const label = document.createElement('div');
   label.className = 'preview-label';
   label.textContent = 'Preview';
   labelRow.appendChild(label);
-
-  const sizeHint = document.createElement('span');
-  sizeHint.className = 'form-hint';
-  sizeHint.id = `preview-size-hint-${key}`;
-  const cfg0 = workingEvents[key];
-  sizeHint.textContent = cfg0 ? `${cfg0.image_area.width} × ${cfg0.image_area.height} px` : '';
-  labelRow.appendChild(sizeHint);
-
   panel.appendChild(labelRow);
 
-  // Wrapper adds padding so the resize handle is always accessible
-  const wrapper = document.createElement('div');
-  wrapper.style.position = 'relative';
-  wrapper.style.display = 'inline-block';
+  const sizeHint = document.createElement('div');
+  sizeHint.id = `preview-size-hint-${key}`;
+  sizeHint.className = 'form-hint';
+  sizeHint.style.marginBottom = '8px';
+  panel.appendChild(sizeHint);
 
-  const container = document.createElement('div');
-  container.className = 'preview-image-container';
-  container.id = `preview-container-${key}`;
+  // ---- Stage ----
+  const stage = document.createElement('div');
+  stage.className = 'preview-stage';
+
+  // ---- Card wrapper (for card resize handle) ----
+  const cardWrapper = document.createElement('div');
+  cardWrapper.style.position = 'relative';
+  cardWrapper.style.display = 'inline-block';
+
+  // ---- Notification card ----
+  const card = document.createElement('div');
+  card.id = `preview-card-${key}`;
+  card.className = 'preview-toast-card';
+
+  const nc = getConfig().notification;
+  const initCardW = nc.window_width ?? 360;
+  const initCardH = nc.window_height ?? 130;
+  // Card size ≈ window size minus body padding (10px * 2)
+  card.style.width = Math.max(120, initCardW - 20) + 'px';
+  card.style.height = Math.max(40, initCardH - 20) + 'px';
+
   const initCfg = workingEvents[key];
+  if (initCfg) applyCardBackground(card, initCfg);
+
+  // ---- Image wrapper (holds container + area-resize handle) ----
+  const imgWrapper = document.createElement('div');
+  imgWrapper.className = 'preview-image-wrapper';
+
+  // ---- Image container ----
+  const imgContainer = document.createElement('div');
+  imgContainer.id = `preview-container-${key}`;
+  imgContainer.className = 'preview-image-container';
   if (initCfg) {
-    container.style.width = initCfg.image_area.width + 'px';
-    container.style.height = initCfg.image_area.height + 'px';
+    imgContainer.style.width = initCfg.image_area.width + 'px';
+    imgContainer.style.height = initCfg.image_area.height + 'px';
   }
 
   const img = document.createElement('img');
@@ -69,67 +175,230 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
   iframe.style.height = '100%';
   iframe.style.border = 'none';
 
-  container.appendChild(img);
-  container.appendChild(iframe);
+  // Apply initial transform
+  const applyImgTransform = (ox: number, oy: number, sc: number) => {
+    const t = `translate(${ox}px, ${oy}px) scale(${sc})`;
+    img.style.transform = t;
+    iframe.style.transform = t;
+  };
+  if (initCfg) {
+    applyImgTransform(initCfg.image_offset_x, initCfg.image_offset_y, initCfg.image_scale);
+  }
 
-  // Resize handle — bottom-right corner drag to resize image area
-  const handle = document.createElement('div');
-  handle.className = 'preview-resize-handle';
-  handle.title = 'Drag to resize';
+  img.style.cursor = 'move';
 
-  let resizing = false;
-  let startX = 0, startY = 0, startW = 0, startH = 0;
+  // ---- Scale handle (inside container, bottom-right) ----
+  const scaleHandle = document.createElement('div');
+  scaleHandle.className = 'preview-scale-handle';
+  scaleHandle.title = 'Drag to scale image';
 
-  handle.addEventListener('mousedown', (e) => {
+  imgContainer.appendChild(img);
+  imgContainer.appendChild(iframe);
+  imgContainer.appendChild(scaleHandle);
+
+  // ---- Area resize handle (outside container, bottom-right) ----
+  const areaHandle = document.createElement('div');
+  areaHandle.className = 'preview-resize-handle';
+  areaHandle.title = 'Drag to resize image area';
+
+  imgWrapper.appendChild(imgContainer);
+  imgWrapper.appendChild(areaHandle);
+
+  // ---- Info panel ----
+  const infoPanel = document.createElement('div');
+  infoPanel.className = 'preview-info';
+
+  const appNameEl = document.createElement('div');
+  appNameEl.id = `preview-app-name-${key}`;
+  appNameEl.className = 'preview-app-name-el';
+  appNameEl.textContent = initCfg?.label_app_name || 'App Name';
+  appNameEl.style.display = initCfg?.label_app_name ? '' : 'none';
+
+  const cwdEl = document.createElement('div');
+  cwdEl.id = `preview-cwd-${key}`;
+  cwdEl.className = 'preview-cwd-el';
+  cwdEl.textContent = '~/projects/example';
+  cwdEl.style.display = initCfg?.label_show_cwd !== false ? '' : 'none';
+
+  const badgeEl = document.createElement('div');
+  badgeEl.id = `preview-badge-${key}`;
+  badgeEl.className = 'preview-badge-el';
+  badgeEl.textContent = initCfg?.label_event_name ?? key;
+  badgeEl.style.display = initCfg?.label_show_event_badge !== false ? '' : 'none';
+
+  infoPanel.appendChild(appNameEl);
+  infoPanel.appendChild(cwdEl);
+  infoPanel.appendChild(badgeEl);
+
+  card.appendChild(imgWrapper);
+  card.appendChild(infoPanel);
+
+  // ---- Card resize handle (outside card, bottom-right) ----
+  const cardHandle = document.createElement('div');
+  cardHandle.className = 'preview-card-resize-handle';
+  cardHandle.title = 'Drag to resize notification window';
+
+  cardWrapper.appendChild(card);
+  cardWrapper.appendChild(cardHandle);
+  stage.appendChild(cardWrapper);
+  panel.appendChild(stage);
+  panel.appendChild(buildHint(
+    'Drag image → position offset  ·  Drag ⊙ (bottom-right inside image) → scale  ·  ' +
+    'Drag ▪ (bottom-right outside image) → image area  ·  Drag ▫ (bottom-right outside card) → window size'
+  ));
+
+  // ---- Drag state ----
+  let imageDragging = false;
+  let imgStartX = 0, imgStartY = 0, imgStartOX = 0, imgStartOY = 0;
+
+  let scaleDragging = false;
+  let scaleStartX = 0, scaleStartY = 0, scaleStartVal = 1;
+
+  let areaResizing = false;
+  let areaStartX = 0, areaStartY = 0, areaStartW = 0, areaStartH = 0;
+
+  let cardResizing = false;
+  let cardStartX = 0, cardStartY = 0, cardStartW = initCardW, cardStartH = initCardH;
+  let currentWindowW = initCardW, currentWindowH = initCardH;
+
+  // ---- Mousedown handlers ----
+  img.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
-    resizing = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    const cfg = workingEvents[key];
-    startW = cfg ? cfg.image_area.width : parseInt(container.style.width) || 80;
-    startH = cfg ? cfg.image_area.height : parseInt(container.style.height) || 80;
+    imageDragging = true;
+    imgStartX = e.clientX;
+    imgStartY = e.clientY;
+    const c = workingEvents[key];
+    imgStartOX = c?.image_offset_x ?? 0;
+    imgStartOY = c?.image_offset_y ?? 0;
   });
 
+  scaleHandle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    scaleDragging = true;
+    scaleStartX = e.clientX;
+    scaleStartY = e.clientY;
+    scaleStartVal = workingEvents[key]?.image_scale ?? 1;
+  });
+
+  areaHandle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    areaResizing = true;
+    areaStartX = e.clientX;
+    areaStartY = e.clientY;
+    const c = workingEvents[key];
+    areaStartW = c?.image_area.width ?? 80;
+    areaStartH = c?.image_area.height ?? 80;
+  });
+
+  cardHandle.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    cardResizing = true;
+    cardStartX = e.clientX;
+    cardStartY = e.clientY;
+    const n = getConfig().notification;
+    cardStartW = n.window_width ?? 360;
+    cardStartH = n.window_height ?? 130;
+    currentWindowW = cardStartW;
+    currentWindowH = cardStartH;
+  });
+
+  // ---- Global mousemove ----
   window.addEventListener('mousemove', (e) => {
-    if (!resizing) return;
-    const newW = Math.max(24, Math.round(startW + (e.clientX - startX)));
-    const newH = Math.max(24, Math.round(startH + (e.clientY - startY)));
-    container.style.width = newW + 'px';
-    container.style.height = newH + 'px';
-    const hint = document.getElementById(`preview-size-hint-${key}`);
-    if (hint) hint.textContent = `${newW} × ${newH} px`;
-    // Sync numeric inputs if open
-    const wInput = document.getElementById(`area-w-${key}`) as HTMLInputElement | null;
-    const hInput = document.getElementById(`area-h-${key}`) as HTMLInputElement | null;
-    if (wInput) wInput.value = String(newW);
-    if (hInput) hInput.value = String(newH);
-    if (workingEvents[key]) {
-      workingEvents[key]!.image_area = { width: newW, height: newH };
+    if (imageDragging) {
+      const newOX = Math.round(imgStartOX + (e.clientX - imgStartX));
+      const newOY = Math.round(imgStartOY + (e.clientY - imgStartY));
+      if (workingEvents[key]) {
+        workingEvents[key]!.image_offset_x = newOX;
+        workingEvents[key]!.image_offset_y = newOY;
+      }
+      applyImgTransform(newOX, newOY, workingEvents[key]?.image_scale ?? 1);
+      updateSizeHint(key);
+    }
+
+    if (scaleDragging) {
+      // Diagonal drag: right+down = bigger, left+up = smaller
+      const delta = ((e.clientX - scaleStartX) + (e.clientY - scaleStartY)) / 120;
+      const raw = Math.max(0.05, Math.min(10, scaleStartVal + delta));
+      const sc = Math.round(raw * 20) / 20; // snap to 0.05 steps
+      if (workingEvents[key]) workingEvents[key]!.image_scale = sc;
+      const c = workingEvents[key];
+      applyImgTransform(c?.image_offset_x ?? 0, c?.image_offset_y ?? 0, sc);
+      updateSizeHint(key);
+    }
+
+    if (areaResizing) {
+      const newW = Math.max(24, Math.round(areaStartW + (e.clientX - areaStartX)));
+      const newH = Math.max(24, Math.round(areaStartH + (e.clientY - areaStartY)));
+      imgContainer.style.width = newW + 'px';
+      imgContainer.style.height = newH + 'px';
+      if (workingEvents[key]) {
+        workingEvents[key]!.image_area = { width: newW, height: newH };
+      }
+      updateSizeHint(key);
+    }
+
+    if (cardResizing) {
+      const newW = Math.max(160, Math.round(cardStartW + (e.clientX - cardStartX)));
+      const newH = Math.max(60, Math.round(cardStartH + (e.clientY - cardStartY)));
+      currentWindowW = newW;
+      currentWindowH = newH;
+      card.style.width = Math.max(120, newW - 20) + 'px';
+      card.style.height = Math.max(40, newH - 20) + 'px';
+      updateSizeHint(key);
     }
   });
 
-  window.addEventListener('mouseup', () => {
-    if (resizing) {
-      resizing = false;
+  // ---- Global mouseup ----
+  window.addEventListener('mouseup', async () => {
+    if (areaResizing) {
+      areaResizing = false;
       void refreshPreview(key);
     }
+    imageDragging = false;
+    scaleDragging = false;
+
+    if (cardResizing) {
+      cardResizing = false;
+      // Auto-save new window size to NotificationConfig
+      void saveConfig({
+        notification: {
+          ...getConfig().notification,
+          window_width: currentWindowW,
+          window_height: currentWindowH,
+        },
+      });
+      updateSizeHint(key);
+    }
   });
 
-  wrapper.appendChild(container);
-  wrapper.appendChild(handle);
-  panel.appendChild(wrapper);
-  panel.appendChild(buildHint('Drag the corner handle to resize. This sets the image container size in the notification.'));
+  // Initial hint
+  updateSizeHint(key);
+
   return panel;
 }
 
+// ---------------------------------------------------------------------------
+// Refresh preview (image + card state)
+// ---------------------------------------------------------------------------
+
 async function refreshPreview(key: EventKey): Promise<void> {
-  const container = document.getElementById(`preview-container-${key}`);
-  if (!container) return;
   const cfg = workingEvents[key];
   if (!cfg) return;
   await setPreviewImage(key, cfg.image_path, cfg.frame_interval_ms);
+  updatePreviewCard(key);
 }
+
+// ---------------------------------------------------------------------------
+// Detail panel (per-event settings)
+// ---------------------------------------------------------------------------
 
 function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   const detail = document.createElement('div');
@@ -186,7 +455,7 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
 
   const imageLabel = document.createElement('label');
   imageLabel.className = 'form-label';
-  imageLabel.textContent = 'Asset Path (Image/Folder/HTML)';
+  imageLabel.textContent = 'Asset Path (Image / Folder / HTML)';
   imageGroup.appendChild(imageLabel);
 
   const imageRow = document.createElement('div');
@@ -236,7 +505,7 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   imageRow.appendChild(imageBrowseFile);
   imageRow.appendChild(imageBrowseDir);
   imageGroup.appendChild(imageRow);
-  imageGroup.appendChild(buildHint('Select an image, an HTML file, or a folder with numbered images (0.png, 1.png…) for animation.'));
+  imageGroup.appendChild(buildHint('Image, HTML file, or folder with numbered frames (0.png, 1.png…) for animation.'));
   inner.appendChild(imageGroup);
 
   // --- Background color ---
@@ -245,7 +514,7 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
 
   const bgColorLabel = document.createElement('label');
   bgColorLabel.className = 'form-label';
-  bgColorLabel.textContent = 'Image Background Color';
+  bgColorLabel.textContent = 'Card Background Color';
   bgColorGroup.appendChild(bgColorLabel);
 
   const bgColorRow = document.createElement('div');
@@ -257,10 +526,6 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   bgColorInput.type = 'color';
   bgColorInput.className = 'form-color';
   bgColorInput.value = cfg.image_bg_color;
-  bgColorInput.addEventListener('input', () => {
-    workingEvents[key]!.image_bg_color = bgColorInput.value;
-    void refreshPreview(key);
-  });
 
   const bgColorText = document.createElement('input');
   bgColorText.type = 'text';
@@ -268,16 +533,19 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   bgColorText.style.width = '100px';
   bgColorText.value = cfg.image_bg_color;
   bgColorText.placeholder = '#000000';
+
+  bgColorInput.addEventListener('input', () => {
+    bgColorText.value = bgColorInput.value;
+    workingEvents[key]!.image_bg_color = bgColorInput.value;
+    updatePreviewCard(key);
+  });
   bgColorText.addEventListener('input', () => {
     const hex = bgColorText.value;
     if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
       bgColorInput.value = hex;
       workingEvents[key]!.image_bg_color = hex;
-      void refreshPreview(key);
+      updatePreviewCard(key);
     }
-  });
-  bgColorInput.addEventListener('input', () => {
-    bgColorText.value = bgColorInput.value;
   });
 
   bgColorRow.appendChild(bgColorInput);
@@ -291,7 +559,7 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
 
   const bgOpacityLabel = document.createElement('label');
   bgOpacityLabel.className = 'form-label';
-  bgOpacityLabel.textContent = `Image Background Opacity`;
+  bgOpacityLabel.textContent = 'Card Background Opacity';
   bgOpacityGroup.appendChild(bgOpacityLabel);
 
   const bgOpacityRow = document.createElement('div');
@@ -317,13 +585,32 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
     const v = parseFloat(bgOpacityRange.value);
     workingEvents[key]!.image_bg_opacity = v;
     bgOpacityValue.textContent = Math.round(v * 100) + '%';
-    void refreshPreview(key);
+    updatePreviewCard(key);
   });
 
   bgOpacityRow.appendChild(bgOpacityRange);
   bgOpacityRow.appendChild(bgOpacityValue);
   bgOpacityGroup.appendChild(bgOpacityRow);
   inner.appendChild(bgOpacityGroup);
+
+  // --- Background visible toggle ---
+  const bgVisibleRow = document.createElement('div');
+  bgVisibleRow.style.display = 'flex';
+  bgVisibleRow.style.alignItems = 'center';
+  bgVisibleRow.style.gap = '10px';
+  bgVisibleRow.style.marginBottom = '8px';
+
+  const bgVisibleToggle = buildToggle(cfg.bg_visible, (checked) => {
+    workingEvents[key]!.bg_visible = checked;
+    updatePreviewCard(key);
+  });
+  const bgVisibleLabel = document.createElement('span');
+  bgVisibleLabel.className = 'form-hint';
+  bgVisibleLabel.style.color = 'var(--text-secondary)';
+  bgVisibleLabel.textContent = 'Show notification card background (glassmorphism)';
+  bgVisibleRow.appendChild(bgVisibleToggle);
+  bgVisibleRow.appendChild(bgVisibleLabel);
+  inner.appendChild(bgVisibleRow);
 
   // --- Frame interval ---
   const fpsGroup = document.createElement('div');
@@ -348,68 +635,10 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
     }
   });
   fpsGroup.appendChild(fpsInput);
-  fpsGroup.appendChild(buildHint('Minimum 16 ms (~60fps). Used for animated image folders.'));
+  fpsGroup.appendChild(buildHint('Minimum 16 ms (~60 fps). Used for animated image folders.'));
   inner.appendChild(fpsGroup);
 
-  // --- Image area (numeric inputs — preview also has drag handle) ---
-  const areaGroup = document.createElement('div');
-  areaGroup.className = 'form-group';
-
-  const areaLabel = document.createElement('label');
-  areaLabel.className = 'form-label';
-  areaLabel.textContent = 'Image Area Size (px)';
-  areaGroup.appendChild(areaLabel);
-
-  const areaRow = document.createElement('div');
-  areaRow.className = 'path-row';
-  areaRow.style.gap = '8px';
-  areaRow.style.alignItems = 'center';
-
-  const makeAreaInput = (id: string, value: number, dim: 'width' | 'height') => {
-    const wrap = document.createElement('div');
-    wrap.style.display = 'flex';
-    wrap.style.alignItems = 'center';
-    wrap.style.gap = '6px';
-    const lbl = document.createElement('span');
-    lbl.className = 'form-hint';
-    lbl.textContent = dim === 'width' ? 'W' : 'H';
-    const inp = document.createElement('input');
-    inp.type = 'number';
-    inp.id = id;
-    inp.className = 'form-input';
-    inp.style.width = '72px';
-    inp.min = '24';
-    inp.max = '600';
-    inp.value = String(value);
-    inp.addEventListener('change', () => {
-      const v = Math.max(24, Math.min(600, parseInt(inp.value, 10) || 80));
-      inp.value = String(v);
-      workingEvents[key]!.image_area[dim] = v;
-      // Sync preview container size
-      const container = document.getElementById(`preview-container-${key}`);
-      if (container) container.style[dim === 'width' ? 'width' : 'height'] = v + 'px';
-      const hint = document.getElementById(`preview-size-hint-${key}`);
-      const other = dim === 'width'
-        ? workingEvents[key]!.image_area.height
-        : workingEvents[key]!.image_area.width;
-      if (hint) hint.textContent = dim === 'width' ? `${v} × ${other} px` : `${other} × ${v} px`;
-      void refreshPreview(key);
-    });
-    wrap.appendChild(lbl);
-    wrap.appendChild(inp);
-    return wrap;
-  };
-
-  areaRow.appendChild(makeAreaInput(`area-w-${key}`, cfg.image_area.width, 'width'));
-  areaRow.appendChild(makeAreaInput(`area-h-${key}`, cfg.image_area.height, 'height'));
-  areaGroup.appendChild(areaRow);
-  areaGroup.appendChild(buildHint('Or drag the corner of the preview below.'));
-  inner.appendChild(areaGroup);
-
-  // --- Preview ---
-  inner.appendChild(buildPreviewPanel(key));
-
-  // --- Text customization ---
+  // --- Label customization ---
   const textSection = document.createElement('div');
   textSection.className = 'form-group';
   textSection.style.borderTop = '1px solid var(--border)';
@@ -433,15 +662,16 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   const appNameInput = document.createElement('input');
   appNameInput.type = 'text';
   appNameInput.className = 'form-input';
-  appNameInput.placeholder = 'Claude Code';
+  appNameInput.placeholder = 'Leave empty to hide';
   appNameInput.value = cfg.label_app_name ?? '';
   appNameInput.addEventListener('input', () => {
     workingEvents[key]!.label_app_name = appNameInput.value.trim() || null;
+    updatePreviewCard(key);
   });
   appNameGroup.appendChild(appNameInput);
   textSection.appendChild(appNameGroup);
 
-  // Event display name
+  // Event badge text
   const evNameGroup = document.createElement('div');
   evNameGroup.className = 'form-group';
   evNameGroup.style.marginBottom = '10px';
@@ -452,10 +682,11 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   const evNameInput = document.createElement('input');
   evNameInput.type = 'text';
   evNameInput.className = 'form-input';
-  evNameInput.placeholder = key; // default = event key e.g. "Stop"
+  evNameInput.placeholder = key;
   evNameInput.value = cfg.label_event_name ?? '';
   evNameInput.addEventListener('input', () => {
     workingEvents[key]!.label_event_name = evNameInput.value.trim() || null;
+    updatePreviewCard(key);
   });
   evNameGroup.appendChild(evNameInput);
   textSection.appendChild(evNameGroup);
@@ -468,6 +699,7 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   cwdToggleRow.style.marginBottom = '8px';
   const cwdToggle = buildToggle(cfg.label_show_cwd, (checked) => {
     workingEvents[key]!.label_show_cwd = checked;
+    updatePreviewCard(key);
   });
   const cwdToggleLabel = document.createElement('span');
   cwdToggleLabel.className = 'form-hint';
@@ -484,6 +716,7 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   badgeToggleRow.style.gap = '10px';
   const badgeToggle = buildToggle(cfg.label_show_event_badge, (checked) => {
     workingEvents[key]!.label_show_event_badge = checked;
+    updatePreviewCard(key);
   });
   const badgeToggleLabel = document.createElement('span');
   badgeToggleLabel.className = 'form-hint';
@@ -494,6 +727,9 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   textSection.appendChild(badgeToggleRow);
 
   inner.appendChild(textSection);
+
+  // --- Full notification preview ---
+  inner.appendChild(buildPreviewPanel(key));
 
   // --- Save button ---
   const saveBar = document.createElement('div');
@@ -522,6 +758,10 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   return detail;
 }
 
+// ---------------------------------------------------------------------------
+// Event card
+// ---------------------------------------------------------------------------
+
 function buildEventCard(key: EventKey, cfg: EventConfig): HTMLElement {
   const card = document.createElement('div');
   card.className = 'event-card';
@@ -529,7 +769,6 @@ function buildEventCard(key: EventKey, cfg: EventConfig): HTMLElement {
   const header = document.createElement('div');
   header.className = 'event-header';
 
-  // Toggle
   const toggle = buildToggle(cfg.enabled, (checked) => {
     workingEvents[key]!.enabled = checked;
   });
@@ -549,7 +788,6 @@ function buildEventCard(key: EventKey, cfg: EventConfig): HTMLElement {
   const detail = buildDetailPanel(key, cfg);
 
   header.addEventListener('click', (e) => {
-    // Don't expand/collapse when clicking the toggle itself
     if ((e.target as HTMLElement).closest('.toggle')) return;
     const isExpanded = card.classList.toggle('expanded');
     if (isExpanded) {
@@ -564,8 +802,11 @@ function buildEventCard(key: EventKey, cfg: EventConfig): HTMLElement {
   return card;
 }
 
+// ---------------------------------------------------------------------------
+// Render
+// ---------------------------------------------------------------------------
+
 export function renderEvents(config: AppConfig): void {
-  // Deep-copy events so we have a mutable working copy
   workingEvents = JSON.parse(JSON.stringify(config.events)) as Record<string, EventConfig>;
 
   const container = document.getElementById('events-list')!;
@@ -579,6 +820,14 @@ export function renderEvents(config: AppConfig): void {
       image_bg_color: '#000000',
       image_bg_opacity: 0,
       frame_interval_ms: 100,
+      image_offset_x: 0,
+      image_offset_y: 0,
+      image_scale: 1,
+      bg_visible: true,
+      label_app_name: null,
+      label_show_cwd: true,
+      label_show_event_badge: true,
+      label_event_name: null,
     };
     workingEvents[key] = cfg;
     container.appendChild(buildEventCard(key, cfg));

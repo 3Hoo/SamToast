@@ -65,10 +65,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Removed strict background/border so icons feel 'free' instead of 'trapped' */
-  /* If background color is needed, it will be mapped via inline styles in main.ts */
-  background: transparent; 
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  background: transparent;
+  /* No visible border/outline in the final notification */
 }
 
 .image-container img {
