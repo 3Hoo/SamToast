@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build and release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'FunnyToastAlarm ${{ github.ref_name }}'
+          releaseBody: |
+            ## 설치 방법
+
+            아래 Assets에서 Windows용 설치 파일을 받으세요:
+            - **FunnyToastAlarm_x.x.x_x64-setup.exe** — NSIS 설치 마법사 (권장)
+            - **FunnyToastAlarm_x.x.x_x64_en-US.msi** — MSI 패키지
+
+            ## Claude Code 연동
+
+            1. 앱 실행 후 트레이 아이콘 좌클릭 → 설정 열기
+            2. "Claude Hooks 설정" 버튼 클릭 (자동으로 Claude Code hooks 등록)
+            3. 알림 이미지, 사운드 등 원하는 대로 커스텀!
+          releaseDraft: false
+          prerelease: false

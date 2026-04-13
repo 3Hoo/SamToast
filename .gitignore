@@ -1,6 +1,9 @@
 .superpowers/
 .worktrees/
 
+# Claude Code session data
+.claude/
+
 # Node / frontend
 node_modules/
 dist/
@@ -12,5 +15,7 @@ src-tauri/gen/
 # Compiled JS from TypeScript source
 src/**/*.js
 
-# Temp files
+# Temp / test files
 app-icon.png
+test-*.png
+*.png.tmp
