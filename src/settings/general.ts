@@ -52,7 +52,7 @@ export function renderGeneral(config: AppConfig): void {
   autoTitleEl.textContent = 'Launch on Windows startup';
   const autoDescEl = document.createElement('div');
   autoDescEl.className = 'toggle-desc';
-  autoDescEl.textContent = 'Registers FunnyToastAlarm in the Windows registry to start with Windows.';
+  autoDescEl.textContent = 'Registers SamToast in the Windows registry to start with Windows.';
   autoText.appendChild(autoTitleEl);
   autoText.appendChild(autoDescEl);
 
@@ -109,7 +109,7 @@ export function renderGeneral(config: AppConfig): void {
   const hookDesc = document.createElement('p');
   hookDesc.style.cssText = 'font-size:13px;color:var(--text-secondary);margin-bottom:16px;line-height:1.6;';
   hookDesc.textContent =
-    'Automatically write the required hook entries into your Claude Code settings.json so hook events are forwarded to FunnyToastAlarm.';
+    'Automatically write the required hook entries into your Claude Code settings.json so hook events are forwarded to SamToast.';
   hookSection.appendChild(hookDesc);
 
   const hookBar = document.createElement('div');

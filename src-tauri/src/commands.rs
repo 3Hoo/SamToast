@@ -60,7 +60,7 @@ pub fn set_auto_start(
         let reg_path: Vec<u16> = "Software\\Microsoft\\Windows\\CurrentVersion\\Run\0"
             .encode_utf16()
             .collect();
-        let value_name: Vec<u16> = "FunnyToastAlarm\0".encode_utf16().collect();
+        let value_name: Vec<u16> = "SamToast\0".encode_utf16().collect();
 
         unsafe {
             use windows::Win32::System::Registry::HKEY;

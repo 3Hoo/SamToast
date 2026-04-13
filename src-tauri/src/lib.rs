@@ -93,7 +93,7 @@ pub fn run() {
                         .ok_or("No default window icon configured")?
                         .clone(),
                 )
-                .tooltip("FunnyToastAlarm")
+                .tooltip("SamToast")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| {
@@ -133,7 +133,7 @@ pub fn run() {
                     // Show warning via tray tooltip — no new icon file required.
                     if let Some(tray) = handle_for_server.tray_by_id("main") {
                         let _ = tray.set_tooltip(Some(
-                            "FunnyToastAlarm — 포트 충돌! 설정에서 포트를 변경하세요.",
+                            "SamToast — 포트 충돌! 설정에서 포트를 변경하세요.",
                         ));
                     }
                 }

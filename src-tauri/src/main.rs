@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    funny_toast_alarm_lib::run();
+    sam_toast_lib::run();
 }

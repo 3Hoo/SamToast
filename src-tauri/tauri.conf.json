@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "FunnyToastAlarm",
-  "version": "0.1.0",
-  "identifier": "com.funnytoastalarm.app",
+  "productName": "SamToast",
+  "version": "0.0.2",
+  "identifier": "com.samtoast.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "settings",
-        "title": "FunnyToastAlarm Settings",
+        "title": "SamToast Settings",
         "url": "src/settings/index.html",
         "width": 700,
         "height": 500,
