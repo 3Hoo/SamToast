@@ -123,13 +123,13 @@ pub async fn handle_hook_event(
         .unwrap_or((360.0, 130.0));
 
     // Retrieve event-specific config (sound, image, animation settings)
-    let (sound_path, event_cfg): (Option<String>, EventConfig) = config
+    let (sound_path, sound_loop, event_cfg): (Option<String>, bool, EventConfig) = config
         .read()
         .ok()
         .and_then(|c| {
-            c.events.get(&event_name).map(|e| (e.sound_path.clone(), e.clone()))
+            c.events.get(&event_name).map(|e| (e.sound_path.clone(), e.sound_loop, e.clone()))
         })
-        .unwrap_or_else(|| (None, EventConfig::default()));
+        .unwrap_or_else(|| (None, false, EventConfig::default()));
 
     // Check if the session already exists (keyed by safe_id).
     let existing_label: Option<String> = sessions
@@ -177,10 +177,11 @@ pub async fn handle_hook_event(
                 )
                 .ok();
 
-            // Play sound (Fix 3: use spawn_blocking to avoid blocking async executor)
+            // Play sound — pass cancel token so looping sound stops with the notification
             let sound_path_owned = sound_path.clone();
+            let sound_cancel = new_token.clone();
             tokio::task::spawn_blocking(move || {
-                crate::sound::play_notification_sound(sound_path_owned.as_deref());
+                crate::sound::play_notification_sound(sound_path_owned.as_deref(), sound_loop, &sound_cancel);
             });
 
             // Restart timeout
@@ -315,10 +316,11 @@ pub async fn handle_hook_event(
             window_clone_emit.emit_to(window_clone_emit.label(), "notification-show", payload).ok();
         });
 
-        // Play sound (Fix 3: use spawn_blocking to avoid blocking async executor)
+        // Play sound — pass cancel token so looping sound stops with the notification
         let sound_path_owned = sound_path.clone();
+        let sound_cancel = cancel_token.clone();
         tokio::task::spawn_blocking(move || {
-            crate::sound::play_notification_sound(sound_path_owned.as_deref());
+            crate::sound::play_notification_sound(sound_path_owned.as_deref(), sound_loop, &sound_cancel);
         });
 
         // Start timeout

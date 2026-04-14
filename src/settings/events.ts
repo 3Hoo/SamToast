@@ -569,6 +569,22 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   soundRow.appendChild(soundInput);
   soundRow.appendChild(soundBrowse);
   soundGroup.appendChild(soundRow);
+
+  // Sound loop toggle
+  const soundLoopRow = document.createElement('div');
+  soundLoopRow.className = 'toggle-row';
+  soundLoopRow.style.marginTop = '8px';
+  const soundLoopToggle = buildToggle(cfg.sound_loop, (v) => {
+    workingEvents[key]!.sound_loop = v;
+  });
+  const soundLoopLabel = document.createElement('span');
+  soundLoopLabel.className = 'form-hint';
+  soundLoopLabel.style.color = 'var(--text-secondary)';
+  soundLoopLabel.textContent = 'Loop sound (stops when notification closes)';
+  soundLoopRow.appendChild(soundLoopToggle);
+  soundLoopRow.appendChild(soundLoopLabel);
+  soundGroup.appendChild(soundLoopRow);
+
   inner.appendChild(soundGroup);
 
   // --- Image path ---
@@ -953,6 +969,7 @@ export function renderEvents(config: AppConfig): void {
     const cfg: EventConfig = workingEvents[key] ?? {
       enabled: false,
       sound_path: null,
+      sound_loop: false,
       image_path: null,
       image_area: { width: 80, height: 80 },
       image_bg_color: '#000000',

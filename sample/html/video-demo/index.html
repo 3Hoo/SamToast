@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <!--
+    Video demo for SamToast HTML asset rendering.
+
+    Drop a video file named "video.mp4" (or .webm) next to this file,
+    then set the asset path to this index.html in the event settings.
+
+    - autoplay  : starts immediately when the notification appears
+    - loop      : loops the video (override with SamToast's animation loop setting)
+    - Audio     : supported — the video's audio track plays as-is.
+                  Tip: disable SamToast's separate sound_path for this event
+                  so the video audio is the only sound.
+
+    MP4 note: MP4 does NOT support transparent background.
+              Use WebM (VP9 with alpha) if you need transparency.
+  -->
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <video autoplay loop playsinline>
+    <source src="./video.mp4"  type="video/mp4" />
+    <source src="./video.webm" type="video/webm" />
+  </video>
+</body>
+</html>

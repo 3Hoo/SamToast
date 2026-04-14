@@ -26,6 +26,8 @@ impl Default for ImageArea {
 pub struct EventConfig {
     pub enabled: bool,
     pub sound_path: Option<String>,
+    #[serde(default)]
+    pub sound_loop: bool,            // true = 알림 닫힐 때까지 반복 재생
     pub image_path: Option<String>,
     pub image_area: ImageArea,
     pub image_bg_color: String,          // hex e.g. "#000000"
@@ -95,6 +97,7 @@ impl EventConfig {
         Self {
             enabled: true,
             sound_path: None,
+            sound_loop: false,
             image_path: None,
             image_area: ImageArea::default(),
             image_bg_color: "#000000".to_string(),

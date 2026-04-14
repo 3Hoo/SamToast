@@ -17,6 +17,7 @@ export interface ImageArea {
 export interface EventConfig {
   enabled: boolean;
   sound_path: string | null;
+  sound_loop: boolean;
   image_path: string | null;
   image_area: ImageArea;
   image_bg_color: string;

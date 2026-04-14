@@ -168,16 +168,25 @@ pub async fn on_notification_click(
         )
     };
 
+    let label = window.label();
+    let safe_id = label.strip_prefix("notification-").unwrap_or(label);
+
     if focus_session {
-        // Window label format: "notification-<safe_id>" (sanitized session_id).
-        let label = window.label();
-        let safe_id = label.strip_prefix("notification-").unwrap_or(label);
         let pid = {
             let sessions = state.sessions.lock().unwrap();
             sessions.get(safe_id).and_then(|s| s.pid)
         };
         if let Some(pid) = pid {
             focus::focus_session_window(pid);
+        }
+    }
+
+    // Cancel the session token so any looping sound stops immediately
+    if let Ok(mut sessions) = state.sessions.lock() {
+        if let Some(session) = sessions.get_mut(safe_id) {
+            if let Some(token) = session.cancel_token.take() {
+                token.cancel();
+            }
         }
     }
 
