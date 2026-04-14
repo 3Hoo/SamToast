@@ -5,7 +5,7 @@
 // - null/undefined             → shows the bundled default Claude icon
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { readDir } from '@tauri-apps/plugin-fs';
+import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
 
 let animationTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -25,11 +25,15 @@ export async function setImage(
     return;
   }
 
-  // Display HTML — load via asset:// so relative CSS/JS paths resolve correctly
+  // Display HTML — inline CSS files so srcdoc renders styles correctly
   if (imagePath.toLowerCase().endsWith('.html') || imagePath.toLowerCase().endsWith('.htm')) {
     img.style.display = 'none';
     iframe.style.display = 'block';
-    iframe.src = convertFileSrc(imagePath);
+    try {
+      iframe.srcdoc = await loadHtmlWithInlinedCss(imagePath);
+    } catch {
+      iframe.srcdoc = '';
+    }
     return;
   }
 
@@ -82,3 +86,37 @@ export function stopAnimation(): void {
 
 // Reserved for external callers that may want to resume a paused animation.
 export function startAnimation(): void {}
+
+// ---------------------------------------------------------------------------
+// HTML helper — inline relative <link rel="stylesheet"> as <style> blocks
+// so srcdoc iframes can render external CSS files.
+// ---------------------------------------------------------------------------
+
+async function loadHtmlWithInlinedCss(htmlPath: string): Promise<string> {
+  const html = await readTextFile(htmlPath);
+  const dir = htmlPath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
+
+  const re = /<link([^>]*)>/gi;
+  const replacements: [string, string][] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = re.exec(html)) !== null) {
+    const tag = match[0];
+    if (!/rel=["']stylesheet["']/i.test(tag)) continue;
+    const hrefMatch = /href=["']([^"']+)["']/i.exec(tag);
+    if (!hrefMatch) continue;
+    const href = hrefMatch[1];
+    if (/^https?:\/\/|^\/\/|^\//.test(href)) continue; // leave absolute URLs alone
+    const cssPath = `${dir}/${href.replace(/^\.\//, '')}`;
+    try {
+      const css = await readTextFile(cssPath);
+      replacements.push([tag, `<style>\n${css}\n</style>`]);
+    } catch { /* skip unreadable css */ }
+  }
+
+  let result = html;
+  for (const [original, replacement] of replacements) {
+    result = result.replace(original, replacement);
+  }
+  return result;
+}

@@ -3,7 +3,7 @@
 // (targets #preview-image-<eventKey> instead of #toast-image).
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { readDir } from '@tauri-apps/plugin-fs';
+import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
 
 const timers: Map<string, ReturnType<typeof setInterval>> = new Map();
 
@@ -38,7 +38,11 @@ export async function setPreviewImage(
   if (imagePath.toLowerCase().endsWith('.html') || imagePath.toLowerCase().endsWith('.htm')) {
     imgEl.style.display = 'none';
     iframeEl.style.display = 'block';
-    iframeEl.src = convertFileSrc(imagePath);
+    try {
+      iframeEl.srcdoc = await loadHtmlWithInlinedCss(imagePath);
+    } catch {
+      iframeEl.srcdoc = '';
+    }
     return;
   }
 
@@ -76,4 +80,38 @@ export async function setPreviewImage(
   } catch {
     imgEl.src = convertFileSrc(imagePath);
   }
+}
+
+// ---------------------------------------------------------------------------
+// HTML helper — inline relative <link rel="stylesheet"> as <style> blocks
+// so srcdoc iframes can render external CSS files.
+// ---------------------------------------------------------------------------
+
+async function loadHtmlWithInlinedCss(htmlPath: string): Promise<string> {
+  const html = await readTextFile(htmlPath);
+  const dir = htmlPath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
+
+  const re = /<link([^>]*)>/gi;
+  const replacements: [string, string][] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = re.exec(html)) !== null) {
+    const tag = match[0];
+    if (!/rel=["']stylesheet["']/i.test(tag)) continue;
+    const hrefMatch = /href=["']([^"']+)["']/i.exec(tag);
+    if (!hrefMatch) continue;
+    const href = hrefMatch[1];
+    if (/^https?:\/\/|^\/\/|^\//.test(href)) continue;
+    const cssPath = `${dir}/${href.replace(/^\.\//, '')}`;
+    try {
+      const css = await readTextFile(cssPath);
+      replacements.push([tag, `<style>\n${css}\n</style>`]);
+    } catch { /* skip unreadable css */ }
+  }
+
+  let result = html;
+  for (const [original, replacement] of replacements) {
+    result = result.replace(original, replacement);
+  }
+  return result;
 }
