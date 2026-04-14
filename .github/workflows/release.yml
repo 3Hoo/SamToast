@@ -37,13 +37,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'FunnyToastAlarm ${{ github.ref_name }}'
+          releaseName: 'SamToast ${{ github.ref_name }}'
           releaseBody: |
             ## 설치 방법
 
             아래 Assets에서 Windows용 설치 파일을 받으세요:
-            - **FunnyToastAlarm_x.x.x_x64-setup.exe** — NSIS 설치 마법사 (권장)
-            - **FunnyToastAlarm_x.x.x_x64_en-US.msi** — MSI 패키지
+            - **SamToast_x.x.x_x64-setup.exe** — NSIS 설치 마법사 (권장)
+            - **SamToast_x.x.x_x64_en-US.msi** — MSI 패키지
 
             ## Claude Code 연동
 

@@ -1,4 +1,4 @@
-// FunnyToastAlarm - Tauri application entry point
+// SamToast - Tauri application entry point
 
 pub mod commands;
 pub mod config;

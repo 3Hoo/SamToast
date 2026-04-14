@@ -1,4 +1,4 @@
-// FunnyToastAlarm - Notification sound playback (Step 4-6)
+// SamToast - Notification sound playback (Step 4-6)
 //
 // Custom paths: played via rodio (supports MP3, WAV, OGG, FLAC).
 // No path: Windows default notification sound via MessageBeep.

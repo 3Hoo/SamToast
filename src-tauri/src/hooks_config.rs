@@ -1,4 +1,4 @@
-// FunnyToastAlarm — Claude Code hooks configuration writer
+// SamToast — Claude Code hooks configuration writer
 //
 // Writes hook entries into %USERPROFILE%\.claude\settings.json so that
 // Claude Code forwards lifecycle events to our local HTTP server.
@@ -30,7 +30,7 @@ fn build_hooks_object(port: u16, enabled_events: &[String]) -> Value {
 ///
 /// - Creates the file if it does not exist.
 /// - Backs up a corrupt/unparseable file to settings.json.bak before overwriting.
-/// - Merges only FunnyToastAlarm-managed event entries; preserves all other keys.
+/// - Merges only SamToast-managed event entries; preserves all other keys.
 ///
 /// On write failure returns `Err` containing the JSON string so the caller can
 /// put it on the clipboard.

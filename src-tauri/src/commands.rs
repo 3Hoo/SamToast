@@ -1,4 +1,4 @@
-// FunnyToastAlarm — Tauri commands (Phase 5a)
+// SamToast — Tauri commands (Phase 5a)
 
 use crate::{config, focus, hooks_config, AppState};
 use crate::config::AppConfig;
@@ -126,7 +126,7 @@ pub fn set_auto_start(
 // configure_claude_hooks
 // ---------------------------------------------------------------------------
 
-/// Write FunnyToastAlarm hook entries into Claude Code's settings.json.
+/// Write SamToast hook entries into Claude Code's settings.json.
 ///
 /// Reads the current config to determine which events are enabled and which
 /// port the HTTP server is listening on.

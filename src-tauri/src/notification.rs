@@ -1,4 +1,4 @@
-// FunnyToastAlarm - Notification window backend
+// SamToast - Notification window backend
 
 use std::time::Duration;
 

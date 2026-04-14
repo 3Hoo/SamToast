@@ -1,4 +1,4 @@
-// FunnyToastAlarm - Session registry for tracking Claude Code sessions
+// SamToast - Session registry for tracking Claude Code sessions
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

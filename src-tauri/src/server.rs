@@ -1,4 +1,4 @@
-// FunnyToastAlarm - HTTP server for receiving Claude Code hooks
+// SamToast - HTTP server for receiving Claude Code hooks
 
 use axum::{
     extract::{Json, State},

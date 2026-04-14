@@ -1,4 +1,4 @@
-// FunnyToastAlarm - Session window focus (Step 4-8)
+// SamToast - Session window focus (Step 4-8)
 
 /// Attempt to bring the terminal window associated with `pid` to the foreground.
 ///
