@@ -1,0 +1,197 @@
+/* radar-demo/style.css */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 64px;
+  height: 64px;
+  background: transparent;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Container ─────────────────────────────────────────────────── */
+
+.radar-wrap {
+  position: relative;
+  width: 60px;
+  height: 60px;
+}
+
+/* ── Base disc (dark green bg) ─────────────────────────────────── */
+
+.disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, #031a0a 0%, #010d05 70%, #000 100%);
+  border: 1px solid rgba(0, 255, 100, 0.35);
+  box-shadow:
+    0 0 8px rgba(0, 255, 100, 0.25),
+    inset 0 0 10px rgba(0, 255, 100, 0.08);
+  overflow: hidden;
+}
+
+/* ── Range rings ───────────────────────────────────────────────── */
+
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 255, 100, 0.18);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+.ring-1 { width: 36%; height: 36%; }
+.ring-2 { width: 64%; height: 64%; }
+.ring-3 { width: 90%; height: 90%; }
+
+/* ── Crosshair lines ───────────────────────────────────────────── */
+
+.cross-h, .cross-v {
+  position: absolute;
+  background: rgba(0, 255, 100, 0.12);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+.cross-h { width: 90%; height: 1px; }
+.cross-v { width: 1px; height: 90%; }
+
+/* ── Sweep beam ────────────────────────────────────────────────── */
+
+.sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  animation: spin 2.4s linear infinite;
+}
+
+/* Trail: conic gradient glow behind the beam */
+.sweep::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from -80deg,
+    transparent 0deg,
+    rgba(0, 255, 100, 0.04) 40deg,
+    rgba(0, 255, 100, 0.18) 70deg,
+    rgba(0, 255, 100, 0.55) 80deg,
+    transparent 81deg
+  );
+}
+
+/* The sharp leading edge line */
+.sweep::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 4%;
+  width: 1.5px;
+  height: 46%;
+  background: linear-gradient(to top, rgba(0, 255, 100, 0.9), rgba(180, 255, 220, 1));
+  transform-origin: bottom center;
+  transform: translateX(-50%);
+  box-shadow: 0 0 4px rgba(0, 255, 100, 0.9);
+  border-radius: 1px;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Center dot ────────────────────────────────────────────────── */
+
+.center-dot {
+  position: absolute;
+  width: 4px; height: 4px;
+  background: #00ff64;
+  border-radius: 50%;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 5px #00ff64, 0 0 10px rgba(0,255,100,0.6);
+  z-index: 10;
+}
+
+/* ── Blip dots ─────────────────────────────────────────────────── */
+
+.blip {
+  position: absolute;
+  border-radius: 50%;
+  z-index: 5;
+}
+
+/* Timing: blip appears just after the sweep arm passes over it.
+   sweep period = 2.4s. Position angle → delay offset.        */
+
+.b1 {
+  width: 4px; height: 4px;
+  background: #00ff64;
+  top: 20%; left: 68%;
+  box-shadow: 0 0 6px #00ff64;
+  animation: blip-fade 2.4s 0.38s linear infinite;
+}
+.b2 {
+  width: 3px; height: 3px;
+  background: #ff4060;
+  top: 62%; left: 24%;
+  box-shadow: 0 0 6px #ff4060;
+  animation: blip-fade 2.4s 1.55s linear infinite;
+}
+.b3 {
+  width: 3px; height: 3px;
+  background: #00ff64;
+  top: 72%; left: 58%;
+  box-shadow: 0 0 6px #00ff64;
+  animation: blip-fade 2.4s 1.85s linear infinite;
+}
+.b4 {
+  width: 2px; height: 2px;
+  background: #ffe066;
+  top: 34%; left: 36%;
+  box-shadow: 0 0 5px #ffe066;
+  animation: blip-fade 2.4s 2.1s linear infinite;
+}
+
+@keyframes blip-fade {
+  0%   { opacity: 0;   transform: scale(0.5); }
+  4%   { opacity: 1;   transform: scale(1.8); }
+  15%  { opacity: 0.8; transform: scale(1); }
+  60%  { opacity: 0.25; }
+  100% { opacity: 0;   transform: scale(0.8); }
+}
+
+/* ── Scanline overlay ──────────────────────────────────────────── */
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 3px
+  );
+  pointer-events: none;
+  z-index: 8;
+}
+
+/* ── Outer tick ring ───────────────────────────────────────────── */
+
+.ticks {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(
+      rgba(0, 255, 100, 0.5) 0deg 1deg,
+      transparent 1deg 30deg
+    );
+  -webkit-mask: radial-gradient(transparent 48%, black 50%);
+  mask: radial-gradient(transparent 48%, black 50%);
+}
