@@ -165,7 +165,7 @@ pub struct NotificationConfig {
 impl Default for NotificationConfig {
     fn default() -> Self {
         Self {
-            timeout_secs: 5,
+            timeout_secs: 0,
             on_click_focus_session: true,
             on_click_close: OnClickClose::Animate,
             close_image_path: None,
