@@ -31,6 +31,8 @@ pub struct EventConfig {
     pub image_bg_color: String,          // hex e.g. "#000000"
     pub image_bg_opacity: f32,           // 0.0 ~ 1.0
     pub frame_interval_ms: u64,          // 애니메이션 프레임 간격
+    #[serde(default = "default_true")]
+    pub animation_loop: bool,            // true = 반복, false = 마지막 프레임에서 정지
     // 이미지 렌더링 위치·크기 (컨테이너 기준 transform)
     #[serde(default)]
     pub image_offset_x: i32,
@@ -98,6 +100,7 @@ impl EventConfig {
             image_bg_color: "#000000".to_string(),
             image_bg_opacity: 0.0,
             frame_interval_ms: 100,
+            animation_loop: true,
             image_offset_x: 0,
             image_offset_y: 0,
             image_scale: 1.0,

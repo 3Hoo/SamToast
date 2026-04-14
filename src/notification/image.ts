@@ -5,13 +5,14 @@
 // - null/undefined             → shows the bundled default Claude icon
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
+import { readDir } from '@tauri-apps/plugin-fs';
 
 let animationTimer: ReturnType<typeof setInterval> | null = null;
 
 export async function setImage(
   imagePath: string | undefined,
   frameIntervalMs: number,
+  loop = true,
 ): Promise<void> {
   stopAnimation();
   const img = document.getElementById('toast-image') as HTMLImageElement;
@@ -24,16 +25,11 @@ export async function setImage(
     return;
   }
 
-  // Display HTML
+  // Display HTML — load via asset:// so relative CSS/JS paths resolve correctly
   if (imagePath.toLowerCase().endsWith('.html') || imagePath.toLowerCase().endsWith('.htm')) {
     img.style.display = 'none';
     iframe.style.display = 'block';
-    try {
-      const htmlText = await readTextFile(imagePath);
-      iframe.srcdoc = htmlText;
-    } catch {
-      iframe.src = '';
-    }
+    iframe.src = convertFileSrc(imagePath);
     return;
   }
 
@@ -61,7 +57,13 @@ export async function setImage(
     if (frames.length > 1) {
       const interval = Math.max(frameIntervalMs, 16); // minimum ~60fps
       animationTimer = setInterval(() => {
-        frameIdx = (frameIdx + 1) % frames.length;
+        const next = frameIdx + 1;
+        if (!loop && next >= frames.length) {
+          // Non-loop: stop on last frame
+          stopAnimation();
+          return;
+        }
+        frameIdx = next % frames.length;
         img.src = frames[frameIdx];
       }, interval);
     }

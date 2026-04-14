@@ -3,7 +3,7 @@
 // (targets #preview-image-<eventKey> instead of #toast-image).
 
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { readDir, readTextFile } from '@tauri-apps/plugin-fs';
+import { readDir } from '@tauri-apps/plugin-fs';
 
 const timers: Map<string, ReturnType<typeof setInterval>> = new Map();
 
@@ -19,6 +19,7 @@ export async function setPreviewImage(
   id: string,
   imagePath: string | null | undefined,
   frameIntervalMs: number,
+  loop = true,
 ): Promise<void> {
   stopPreview(id);
 
@@ -37,12 +38,7 @@ export async function setPreviewImage(
   if (imagePath.toLowerCase().endsWith('.html') || imagePath.toLowerCase().endsWith('.htm')) {
     imgEl.style.display = 'none';
     iframeEl.style.display = 'block';
-    try {
-      const htmlText = await readTextFile(imagePath);
-      iframeEl.srcdoc = htmlText;
-    } catch {
-      iframeEl.src = '';
-    }
+    iframeEl.src = convertFileSrc(imagePath);
     return;
   }
 
@@ -67,7 +63,12 @@ export async function setPreviewImage(
     if (frames.length > 1) {
       const interval = Math.max(frameIntervalMs, 16);
       const t = setInterval(() => {
-        frameIdx = (frameIdx + 1) % frames.length;
+        const next = frameIdx + 1;
+        if (!loop && next >= frames.length) {
+          stopPreview(id);
+          return;
+        }
+        frameIdx = next % frames.length;
         imgEl.src = frames[frameIdx];
       }, interval);
       timers.set(id, t);

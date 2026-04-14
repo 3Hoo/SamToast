@@ -22,6 +22,7 @@ export interface EventConfig {
   image_bg_color: string;
   image_bg_opacity: number;
   frame_interval_ms: number;
+  animation_loop: boolean;
   image_offset_x: number;
   image_offset_y: number;
   image_scale: number;

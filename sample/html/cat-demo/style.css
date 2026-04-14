@@ -1,0 +1,29 @@
+/* cat-demo/style.css — loaded via relative path from index.html */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 64px;
+  height: 64px;
+  background: transparent;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cat {
+  font-size: 48px;
+  animation: bounce 0.6s ease-in-out infinite alternate;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+  user-select: none;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0px) rotate(-5deg); }
+  to   { transform: translateY(-6px) rotate(5deg); }
+}

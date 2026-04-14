@@ -15,6 +15,7 @@ interface EventConfig {
   image_bg_color: string;
   image_bg_opacity: number;
   frame_interval_ms: number;
+  animation_loop: boolean;
   image_offset_x: number;
   image_offset_y: number;
   image_scale: number;
@@ -66,6 +67,7 @@ const DEFAULT_EVENT_CONFIG: EventConfig = {
   image_bg_color: '#000000',
   image_bg_opacity: 0,
   frame_interval_ms: 100,
+  animation_loop: true,
   image_offset_x: 0,
   image_offset_y: 0,
   image_scale: 1,
@@ -104,7 +106,7 @@ function updateUI(event_name: string, cwd: string | undefined, cfg: EventConfig)
   imgEl.style.transform = transform;
   iframeEl.style.transform = transform;
 
-  setImage(cfg.image_path, cfg.frame_interval_ms);
+  setImage(cfg.image_path, cfg.frame_interval_ms, cfg.animation_loop);
 
   // --- Toast card background ---
   const toastCard = document.getElementById('toast')!;

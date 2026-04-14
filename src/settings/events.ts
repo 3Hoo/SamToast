@@ -514,7 +514,7 @@ function buildPreviewPanel(key: EventKey): HTMLElement {
 async function refreshPreview(key: EventKey): Promise<void> {
   const cfg = workingEvents[key];
   if (!cfg) return;
-  await setPreviewImage(key, cfg.image_path, cfg.frame_interval_ms);
+  await setPreviewImage(key, cfg.image_path, cfg.frame_interval_ms, cfg.animation_loop);
   updatePreviewCard(key);
 }
 
@@ -760,6 +760,22 @@ function buildDetailPanel(key: EventKey, cfg: EventConfig): HTMLElement {
   fpsGroup.appendChild(buildHint('Minimum 16 ms (~60 fps). Used for animated image folders.'));
   inner.appendChild(fpsGroup);
 
+  // --- Animation loop toggle ---
+  const loopRow = document.createElement('div');
+  loopRow.className = 'toggle-row';
+  loopRow.style.marginTop = '8px';
+  const loopToggle = buildToggle(cfg.animation_loop, (v) => {
+    workingEvents[key]!.animation_loop = v;
+    void refreshPreview(key);
+  });
+  const loopLabel = document.createElement('span');
+  loopLabel.className = 'form-hint';
+  loopLabel.style.color = 'var(--text-secondary)';
+  loopLabel.textContent = 'Loop animation (off = stop on last frame)';
+  loopRow.appendChild(loopToggle);
+  loopRow.appendChild(loopLabel);
+  inner.appendChild(loopRow);
+
   // --- Label customization ---
   const textSection = document.createElement('div');
   textSection.className = 'form-group';
@@ -942,6 +958,7 @@ export function renderEvents(config: AppConfig): void {
       image_bg_color: '#000000',
       image_bg_opacity: 0,
       frame_interval_ms: 100,
+      animation_loop: true,
       image_offset_x: 0,
       image_offset_y: 0,
       image_scale: 1,
